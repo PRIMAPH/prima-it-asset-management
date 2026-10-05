@@ -6,3 +6,26 @@ __pycache__/
 
 # Puppeteer / local cache
 .cache/
+
+# Server/runtime files
+.cache/
+uploads/
+database/
+
+# Backup files
+*.bak
+
+# Certificates / private keys
+*.pem
+*.key
+*.pfx
+*.p12
+*.crt
+
+# Local tools / temp files
+mkcert.exe
+text.text
+
+# Python cache
+__pycache__/
+*.pyc
