@@ -22,5 +22,8 @@
   },
   "devDependencies": {
     "socket.io-client": "^4.8.1"
+  },
+  "allowScripts": {
+    "puppeteer@25.12.0": true
   }
 }

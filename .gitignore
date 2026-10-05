@@ -1,75 +1,8 @@
-# Node
 node_modules/
-
-# Environment / secrets
 .env
-.env.*
-!.env.example
-
-# Certificates / keys
-certs/
-certificates/
-*.pem
-*.key
-*.pfx
-*.p12
-*.crt
-
-# Uploads
-uploads/
-public/uploads/
-
-# Backups / database dumps
-backups/
-*.sql
-*.bak
-*.backup
-
-# Logs
-logs/
 *.log
-
-# Windows
-Thumbs.db
-Desktop.ini
-
-# VS Code
-.vscode/
-
-# Temp
-*.tmp
-*.temp
-~$*
-
-# Local tools / temporary files
-mkcert.exe
-text.text
-
-# Python
 __pycache__/
-*.py[cod]
-*.pyo
 .venv/
-venv/
-env/
-.pytest_cache/
-.mypy_cache/
 
-# Local tools / temporary files
-mkcert.exe
-text.text
-
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-.venv/
-venv/
-env/
-.pytest_cache/
-.mypy_cache/
-
-# Keep application database migrations in Git
-!migrations/
-!migrations/*.sql
-!migrations/**/*.sql
+# Puppeteer / local cache
+.cache/

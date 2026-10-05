@@ -7580,15 +7580,12 @@ if (!fs.existsSync(KEY_PATH)) {
 // ------------------------------------------------------------
 
 const httpsOptions = {
-
   key: fs.readFileSync(
-    KEY_PATH
+    path.join(__dirname, 'certs', 'localhost+3-key.pem')
   ),
-
   cert: fs.readFileSync(
-    CERT_PATH
+    path.join(__dirname, 'certs', 'localhost+3.pem')
   )
-
 };
 
 
@@ -15340,13 +15337,13 @@ httpsServer.listen(
     );
 
     console.log(
-      `LAN:   https://10.10.0.29:${PORT}`
+      `LAN:   https://10.10.0.5:${PORT}`
     );
 
     console.log('');
 
     console.log(
-      `Assets: https://10.10.0.29:${PORT}/assets`
+      `Assets: https://10.10.0.5:${PORT}/assets`
     );
 
     console.log('');
@@ -15362,13 +15359,8 @@ httpsServer.listen(
     );
 
     console.log('');
-
-  
   }
-
-  
 );
-
 // ================================================================
 // PRIMA IT ASSET MANAGEMENT - SELECTABLE PDF REPORT ROUTES
 // Add this block to server.js after `pool`, `app`, and `requireLogin`

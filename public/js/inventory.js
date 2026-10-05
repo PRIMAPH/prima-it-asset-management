@@ -8,6 +8,7 @@
     selectedAsset: null, locations: [], employees: [], scanner: null,
     discrepancyItems: [], selectedReviewItem: null,
     scannerRunning: false, scannerPaused: false, scannerProcessing: false,
+    scannerLookupPending: false,
     scannerStopping: false, scannerKeepAliveOnHide: false,
     scannerCameras: [], selectedCameraId: '', continuousScan: false,
     lastScanText: '', lastScanAt: 0, scanCooldownUntil: 0,
@@ -1231,25 +1232,53 @@
   async function handleInventoryScan(decodedText, decodedResult) {
     const text = String(decodedText || '').trim();
     const now = Date.now();
-    if (!text || state.scannerProcessing || now < state.scanCooldownUntil) return;
-    if (text === state.lastScanText && now - state.lastScanAt < 2200) return;
+    if (!text || !state.scannerRunning || state.scannerPaused || !state.continuousScan ||
+        state.scannerProcessing || state.scannerLookupPending || now < state.scanCooldownUntil) return;
+    if (text === state.lastScanText && now - state.lastScanAt < 1000) return;
 
     state.scannerProcessing = true;
     state.lastScanText = text;
     state.lastScanAt = now;
-    await pauseInventoryScanner();
-    $('inventoryAssetSearch').value = text;
+    const scanner = state.scanner;
+    let verificationOpened = false;
+    console.log('[Inventory Scanner] detected', text);
 
-    const asset = await searchInventoryAsset(text, detectedScannerMethod(decodedResult));
-    if (!asset) {
-      showScanFeedback('warning', null, 'No expected asset matched. Use Manual Search or scan another label.');
-      return;
+    try {
+      hideScanFeedback();
+      $('inventoryAssetSearch').value = text;
+      console.log('[Inventory Scanner] lookup started', text);
+      let asset;
+      state.scannerLookupPending = true;
+      try {
+        asset = await searchInventoryAsset(text, detectedScannerMethod(decodedResult));
+      } finally {
+        state.scannerLookupPending = false;
+        console.log('[Inventory Scanner] lookup finished', text);
+      }
+      // Stop or camera switching may have ended this scan during the lookup.
+      if (state.scanner !== scanner || !state.scannerRunning || !state.continuousScan) return;
+      if (!asset) {
+        state.scanCooldownUntil = Date.now() + 350;
+        showScanFeedback('warning', null, 'No expected asset matched. Use Manual Search or scan another label.');
+        return;
+      }
+      // searchInventoryAsset already displays the ALREADY VERIFIED feedback.
+      if (asset.verification_status !== 'Not Yet Checked') return;
+
+      state.scannerKeepAliveOnHide = true;
+      document.activeElement?.blur();
+      bootstrap.Modal.getInstance($('inventoryScannerModal'))?.hide();
+      // Keep decoding, but protect the selected asset until verification/Continue.
+      verificationOpened = true;
+    } catch (error) {
+      state.scanCooldownUntil = Date.now() + 350;
+      setScannerMessage(error.message || 'Unable to process this scan. Scan another label.', 'danger');
+    } finally {
+      if (!verificationOpened && state.scanner === scanner) {
+        state.scannerProcessing = false;
+        console.log('[Inventory Scanner] processing released', text);
+      }
     }
-    if (asset.verification_status !== 'Not Yet Checked') return;
-
-    state.scannerKeepAliveOnHide = true;
-    document.activeElement?.blur();
-    bootstrap.Modal.getInstance($('inventoryScannerModal'))?.hide();
   }
 
   async function startInventoryScanner() {
@@ -1320,17 +1349,15 @@
 
   async function continueContinuousScanning() {
     hideScanFeedback();
+    state.scannerProcessing = false;
     if (!state.continuousScan || state.selectedSession?.status !== 'In Progress') return;
     clearSelectedAsset();
     $('inventoryAssetSearch').value = '';
-    state.scannerProcessing = false;
     state.scanCooldownUntil = Date.now() + 650;
     const modal = bootstrap.Modal.getOrCreateInstance($('inventoryScannerModal'));
     if (!$('inventoryScannerModal').classList.contains('show')) {
       state.scannerKeepAliveOnHide = false;
       modal.show();
-    } else {
-      await resumeInventoryScanner();
     }
   }
 

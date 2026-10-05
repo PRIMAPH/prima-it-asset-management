@@ -215,6 +215,26 @@ body.inventory-mobile #verifyInventoryAssetBtn { flex: 1 1 190px; }
   body.inventory-mobile .inventory-scanner-dialog .modal-content { height: 100dvh; border: 0; border-radius: 0; }
   body.inventory-mobile .inventory-scanner-dialog .modal-body { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow-y: auto; }
   body.inventory-mobile .inventory-scanner-region { flex: 1 1 auto; min-height: 52dvh; border-radius: 12px; }
+  /* Visual guide only: keep the scanner's decoding area unchanged. */
+  body.inventory-mobile .inventory-scanner-region #qr-shaded-region {
+    width: 83%;
+    height: min(200px, calc(100% - 24px));
+    inset: 50% auto auto 50% !important;
+    transform: translate(-50%, -50%);
+    border: 0 !important;
+    background:
+      linear-gradient(#fff, #fff) left top / 36px 4px,
+      linear-gradient(#fff, #fff) left top / 4px 36px,
+      linear-gradient(#fff, #fff) right top / 36px 4px,
+      linear-gradient(#fff, #fff) right top / 4px 36px,
+      linear-gradient(#fff, #fff) left bottom / 36px 4px,
+      linear-gradient(#fff, #fff) left bottom / 4px 36px,
+      linear-gradient(#fff, #fff) right bottom / 36px 4px,
+      linear-gradient(#fff, #fff) right bottom / 4px 36px;
+    background-repeat: no-repeat;
+    pointer-events: none;
+  }
+  body.inventory-mobile .inventory-scanner-region #qr-shaded-region > div { display: none !important; }
   body.inventory-mobile .inventory-scanner-controls { padding-bottom: calc(.75rem + env(safe-area-inset-bottom)); }
   body.inventory-mobile .inventory-scanner-controls .btn { flex: 1 1 130px; min-height: 48px; }
 }
