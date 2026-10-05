@@ -1,0 +1,1437 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+
+  <meta charset="utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  >
+
+  <title>Repair Job Order</title>
+
+  <script src="/js/alerts.js?v=2"></script>
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: #e9ecef;
+      color: #111;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+
+    .loading {
+      padding: 40px;
+      text-align: center;
+      font-size: 16px;
+    }
+
+
+    .error {
+      max-width: 800px;
+      margin: 30px auto;
+      padding: 20px;
+      background: #fff3cd;
+      border: 1px solid #ffe69c;
+    }
+
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 10mm auto;
+      padding: 8mm 10mm;
+      background: #fff;
+      box-shadow: 0 0 10px rgba(0,0,0,.15);
+      font-size: 9px;
+    }
+
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8mm;
+      padding-bottom: 3mm;
+      margin-bottom: 3mm;
+      border-bottom: 2px solid #172033;
+    }
+
+
+    .company {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+
+    .document-title {
+      margin-top: 1.5mm;
+      font-size: 17px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+
+    .subtitle {
+      margin-top: .7mm;
+      color: #666;
+      font-size: 8px;
+    }
+
+
+    .job-box {
+      flex: 0 0 76mm;
+      width: 76mm;
+      border: 1px solid #555;
+      padding: 2mm;
+      text-align: center;
+    }
+
+
+    .small-label {
+      font-size: 6px;
+      font-weight: 700;
+      color: #666;
+      text-transform: uppercase;
+    }
+
+
+    .repair-barcode {
+      display: block;
+      width: 70mm;
+      max-width: 100%;
+      height: 10mm;
+      margin: 1mm auto .5mm;
+      overflow: visible;
+      shape-rendering: crispEdges;
+    }
+
+
+    .job-number {
+  margin-top: .5mm;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 2mm;
+      margin-bottom: 2mm;
+    }
+
+
+    .summary-box {
+      border: 1px solid #555;
+      padding: 1.5mm 2mm;
+    }
+
+
+    .summary-value {
+      margin-top: .5mm;
+      font-size: 8px;
+      font-weight: 700;
+    }
+
+
+    .section {
+      margin-top: 1.5mm;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+
+    .section-title {
+      padding: 1mm 2mm;
+      background: #172033;
+      color: #fff;
+      font-size: 7.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+
+    th,
+    td {
+      border: 1px solid #555;
+      padding: 1mm 1.5mm;
+      vertical-align: top;
+      word-break: break-word;
+      line-height: 1.2;
+    }
+
+
+    th {
+      width: 19%;
+      background: #f3f4f6;
+      font-size: 6.5px;
+      text-align: left;
+    }
+
+
+    td {
+      font-size: 7.5px;
+    }
+
+
+    .text-box {
+      min-height: 6mm;
+      border: 1px solid #555;
+      padding: 1.2mm 1.5mm;
+      font-size: 7.5px;
+      white-space: pre-wrap;
+    }
+
+
+    .cost-table td:last-child,
+    .cost-table th:last-child {
+      width: 28%;
+      text-align: right;
+    }
+
+
+    .total-row {
+      font-weight: 800;
+      background: #f3f4f6;
+    }
+
+
+    .acknowledgement {
+      border: 1px solid #555;
+      padding: 1.5mm;
+      font-size: 7px;
+      line-height: 1.3;
+    }
+
+
+    .signature {
+      width: 65mm;
+      margin: 5mm auto 0;
+      text-align: center;
+      break-inside: avoid;
+    }
+
+
+    .signature-space {
+      height: 8mm;
+      border-bottom: 1px solid #222;
+    }
+
+
+    .signature-role {
+      margin-top: 1mm;
+      font-size: 7px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+
+    .signature-note {
+      margin-top: .5mm;
+      font-size: 6px;
+      color: #666;
+    }
+
+
+    .footer {
+      margin-top: 3mm;
+      padding-top: 1mm;
+      border-top: 1px solid #999;
+      text-align: center;
+      font-size: 6px;
+      color: #666;
+    }
+
+
+    .print-actions {
+      width: 210mm;
+      margin: 10px auto;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+
+    .print-btn {
+      border: 0;
+      border-radius: 5px;
+      padding: 10px 18px;
+      background: #0d6efd;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+
+    .close-btn {
+      background: #6c757d;
+    }
+
+
+    @page {
+      size: A4 portrait;
+      margin: 5mm;
+    }
+
+
+    @media print {
+
+      body {
+        background: #fff;
+      }
+
+
+      .print-actions {
+        display: none !important;
+      }
+
+
+      .page {
+        width: 100%;
+        min-height: 0;
+        margin: 0;
+        padding: 2mm 3mm;
+        box-shadow: none;
+      }
+
+
+      .section-title {
+        background: #172033 !important;
+        color: #fff !important;
+
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+
+      th,
+      .total-row {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+
+  <div
+    id="loading"
+    class="loading"
+  >
+    Loading Repair Job Order...
+  </div>
+
+
+  <div
+    id="errorBox"
+    class="error"
+    style="display:none;"
+  ></div>
+
+
+  <div
+    id="printActions"
+    class="print-actions"
+    style="display:none;"
+  >
+
+    <button
+      id="printJobOrderPageBtn"
+      type="button"
+      class="print-btn"
+    >
+      Print / Save PDF
+    </button>
+
+    <button
+      id="closeJobOrderPageBtn"
+      type="button"
+      class="print-btn close-btn"
+    >
+      Close
+    </button>
+
+  </div>
+
+
+  <div id="printRoot"></div>
+
+
+<script>
+
+const $ =
+  id =>
+    document.getElementById(id);
+
+
+function esc(value) {
+
+  return String(
+    value ?? ''
+  )
+    .replaceAll(
+      '&',
+      '&amp;'
+    )
+    .replaceAll(
+      '<',
+      '&lt;'
+    )
+    .replaceAll(
+      '>',
+      '&gt;'
+    )
+    .replaceAll(
+      '"',
+      '&quot;'
+    )
+    .replaceAll(
+      "'",
+      '&#039;'
+    );
+
+}
+
+
+function value(v) {
+
+  if (
+    v === null ||
+    v === undefined ||
+    String(v).trim() === ''
+  ) {
+
+    return '—';
+
+  }
+
+
+  return esc(v);
+
+}
+
+
+function money(value) {
+
+  return Number(
+    value || 0
+  )
+    .toLocaleString(
+      'en-PH',
+      {
+        style:
+          'currency',
+
+        currency:
+          'PHP',
+
+        minimumFractionDigits:
+          2
+      }
+    );
+
+}
+
+
+function dateValue(value) {
+
+  if (!value) {
+
+    return '—';
+
+  }
+
+
+  const date =
+    new Date(
+      String(value)
+        .replace(
+          ' ',
+          'T'
+        )
+    );
+
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+
+    return esc(value);
+
+  }
+
+
+  return date.toLocaleString(
+    'en-PH',
+    {
+      year:
+        'numeric',
+
+      month:
+        'short',
+
+      day:
+        '2-digit',
+
+      hour:
+        '2-digit',
+
+      minute:
+        '2-digit'
+    }
+  );
+
+}
+
+
+const CODE128_PATTERNS = [
+  '212222', '222122', '222221', '121223', '121322', '131222',
+  '122213', '122312', '132212', '221213', '221312', '231212',
+  '112232', '122132', '122231', '113222', '123122', '123221',
+  '223211', '221132', '221231', '213212', '223112', '312131',
+  '311222', '321122', '321221', '312212', '322112', '322211',
+  '212123', '212321', '232121', '111323', '131123', '131321',
+  '112313', '132113', '132311', '211313', '231113', '231311',
+  '112133', '112331', '132131', '113123', '113321', '133121',
+  '313121', '211331', '231131', '213113', '213311', '213131',
+  '311123', '311321', '331121', '312113', '312311', '332111',
+  '314111', '221411', '431111', '111224', '111422', '121124',
+  '121421', '141122', '141221', '112214', '112412', '122114',
+  '122411', '142112', '142211', '241211', '221114', '413111',
+  '241112', '134111', '111242', '121142', '121241', '114212',
+  '124112', '124211', '411212', '421112', '421211', '212141',
+  '214121', '412121', '111143', '111341', '131141', '114113',
+  '114311', '411113', '411311', '113141', '114131', '311141',
+  '411131', '211412', '211214', '211232', '2331112'
+];
+
+
+function renderCode128Barcode(
+  svg,
+  rawValue
+) {
+
+  if (!svg) {
+    return;
+  }
+
+
+  const barcodeValue =
+    String(rawValue || '')
+      .trim();
+
+
+  const dataCodes =
+    Array.from(barcodeValue)
+      .map(
+        character =>
+          character.charCodeAt(0) - 32
+      );
+
+
+  const isValid =
+    barcodeValue.length > 0 &&
+    dataCodes.every(
+      code =>
+        code >= 0 &&
+        code <= 94
+    );
+
+
+  if (!isValid) {
+    svg.hidden = true;
+    svg.replaceChildren();
+    return;
+  }
+
+
+  const startCode = 104;
+
+  const checksum =
+    (
+      startCode +
+      dataCodes.reduce(
+        (total, code, index) =>
+          total +
+          code *
+          (index + 1),
+        0
+      )
+    ) % 103;
+
+
+  const encodedPatterns = [
+    startCode,
+    ...dataCodes,
+    checksum,
+    106
+  ]
+    .map(
+      code =>
+        CODE128_PATTERNS[code]
+    );
+
+
+  const quietZone = 10;
+
+  const barcodeWidth =
+    encodedPatterns.reduce(
+      (total, pattern) =>
+        total +
+        Array.from(pattern)
+          .reduce(
+            (width, digit) =>
+              width + Number(digit),
+            0
+          ),
+      quietZone * 2
+    );
+
+
+  const svgNamespace =
+    'http://www.w3.org/2000/svg';
+
+  const fragment =
+    document.createDocumentFragment();
+
+  let x =
+    quietZone;
+
+
+  encodedPatterns.forEach(
+    pattern => {
+
+      Array.from(pattern)
+        .forEach(
+          (digit, index) => {
+
+            const width =
+              Number(digit);
+
+
+            if (index % 2 === 0) {
+
+              const bar =
+                document.createElementNS(
+                  svgNamespace,
+                  'rect'
+                );
+
+              bar.setAttribute(
+                'x',
+                String(x)
+              );
+
+              bar.setAttribute(
+                'y',
+                '0'
+              );
+
+              bar.setAttribute(
+                'width',
+                String(width)
+              );
+
+              bar.setAttribute(
+                'height',
+                '40'
+              );
+
+              bar.setAttribute(
+                'fill',
+                '#000'
+              );
+
+              fragment.appendChild(
+                bar
+              );
+
+            }
+
+
+            x += width;
+
+          }
+        );
+
+    }
+  );
+
+
+  svg.setAttribute(
+    'viewBox',
+    `0 0 ${barcodeWidth} 40`
+  );
+
+  svg.setAttribute(
+    'preserveAspectRatio',
+    'none'
+  );
+
+  svg.setAttribute(
+    'aria-label',
+    `Barcode for ${barcodeValue}`
+  );
+
+  svg.dataset.checksum =
+    String(checksum);
+
+  svg.hidden = false;
+  svg.replaceChildren(fragment);
+
+}
+
+
+async function loadRepair() {
+
+  const params =
+    new URLSearchParams(
+      location.search
+    );
+
+
+  const repairId =
+    Number(
+      params.get('id') ||
+      0
+    );
+
+
+  if (!repairId) {
+
+    showError(
+      'Invalid Repair Job Order ID.'
+    );
+
+    return;
+
+  }
+
+
+  try {
+
+    const response =
+      await fetch(
+        `/api/repairs/${repairId}`,
+        {
+          credentials:
+            'include',
+
+          headers: {
+            'Accept':
+              'application/json'
+          }
+        }
+      );
+
+
+    const repair =
+      await response
+        .json()
+        .catch(
+          () => ({})
+        );
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        repair.message ||
+        'Unable to load repair record.'
+      );
+
+    }
+
+
+    renderRepair(
+      repair
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      'LOAD REPAIR JOB ORDER ERROR:',
+      error
+    );
+
+
+    showError(
+      error.message ||
+      'Unable to load Repair Job Order.'
+    );
+
+  }
+
+}
+
+
+function showError(message) {
+
+  $('loading').style.display =
+    'none';
+
+
+  $('errorBox').style.display =
+    'block';
+
+
+  $('errorBox').textContent =
+    message;
+
+}
+
+
+function renderRepair(repair) {
+
+  $('loading').style.display =
+    'none';
+
+
+  $('printActions').style.display =
+    'flex';
+
+
+  document.title =
+    `${repair.repair_no || 'Repair'} Repair Job Order`;
+
+
+  $('printRoot').innerHTML = `
+
+    <div class="page">
+
+
+      <div class="header">
+
+        <div>
+
+          <div class="company">
+
+            Prima Fintech (Philippines) Lending Corporation
+
+          </div>
+
+
+          <div class="document-title">
+
+            Repair Job Order / Maintenance Record
+
+          </div>
+
+
+          <div class="subtitle">
+
+            IT Asset Repair and Maintenance Documentation
+
+          </div>
+
+        </div>
+
+
+      <div class="job-box">
+
+  <div class="small-label">
+
+    Repair Job Order
+
+  </div>
+
+
+  <svg
+    id="repairBarcode"
+    class="repair-barcode"
+    role="img"
+    aria-label="Repair job order barcode"
+  ></svg>
+
+
+  <div class="job-number">
+
+    ${value(
+      repair.repair_no
+    )}
+
+  </div>
+
+</div>
+
+      </div>
+
+
+      <div class="summary">
+
+        <div class="summary-box">
+
+          <div class="small-label">
+
+            Repair No.
+
+          </div>
+
+          <div class="summary-value">
+
+            ${value(
+              repair.repair_no
+            )}
+
+          </div>
+
+        </div>
+
+
+        <div class="summary-box">
+
+          <div class="small-label">
+
+            Current Status
+
+          </div>
+
+          <div class="summary-value">
+
+            ${value(
+              repair.status
+            )}
+
+          </div>
+
+        </div>
+
+
+        <div class="summary-box">
+
+          <div class="small-label">
+
+            Date Reported
+
+          </div>
+
+          <div class="summary-value">
+
+            ${dateValue(
+              repair.date_reported
+            )}
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="section">
+
+        <div class="section-title">
+          Repair Information
+        </div>
+
+        <table>
+
+          <tr>
+
+            <th>
+              Date Reported
+            </th>
+
+            <td>
+              ${dateValue(
+                repair.date_reported
+              )}
+            </td>
+
+            <th>
+              Date Received
+            </th>
+
+            <td>
+              ${dateValue(
+                repair.date_received
+              )}
+            </td>
+
+          </tr>
+
+
+          <tr>
+
+            <th>
+              Date Completed
+            </th>
+
+            <td>
+              ${dateValue(
+                repair.date_completed
+              )}
+            </td>
+
+            <th>
+              Initial Condition
+            </th>
+
+            <td>
+              ${value(
+                repair.initial_condition
+              )}
+            </td>
+
+          </tr>
+
+
+          <tr>
+
+            <th>
+              Technician
+            </th>
+
+            <td>
+              ${value(
+                repair.technician_name ||
+                'Unassigned'
+              )}
+            </td>
+
+            <th>
+              Vendor / Repair Center
+            </th>
+
+            <td>
+              ${value(
+                repair.vendor
+              )}
+            </td>
+
+          </tr>
+
+
+          <tr>
+
+            <th>
+              Warranty
+            </th>
+
+            <td colspan="3">
+              ${value(
+                repair.warranty
+              )}
+            </td>
+
+          </tr>
+
+        </table>
+
+      </div>
+
+
+      <div class="section">
+
+        <div class="section-title">
+          Asset Information
+        </div>
+
+        <table>
+
+          <tr>
+
+            <th>
+              Asset Tag
+            </th>
+
+            <td>
+              ${value(
+                repair.asset_code
+              )}
+            </td>
+
+            <th>
+              Asset Name
+            </th>
+
+            <td>
+              ${value(
+                repair.asset_name
+              )}
+            </td>
+
+          </tr>
+
+
+          <tr>
+
+            <th>
+              Brand
+            </th>
+
+            <td>
+              ${value(
+                repair.brand
+              )}
+            </td>
+
+            <th>
+              Model
+            </th>
+
+            <td>
+              ${value(
+                repair.model
+              )}
+            </td>
+
+          </tr>
+
+
+          <tr>
+
+            <th>
+              Serial Number
+            </th>
+
+            <td>
+              ${value(
+                repair.serial_number
+              )}
+            </td>
+
+            <th>
+              Asset Status
+            </th>
+
+            <td>
+              ${value(
+                repair.asset_status
+              )}
+            </td>
+
+          </tr>
+
+        </table>
+
+      </div>
+
+
+      <div class="section">
+
+        <div class="section-title">
+          Custodian / Accountability
+        </div>
+
+        <table>
+
+          <tr>
+
+            <th>
+              Custodian
+            </th>
+
+            <td>
+              ${value(
+                repair.custodian_name ||
+                'IT Inventory'
+              )}
+            </td>
+
+            <th>
+              Employee ID
+            </th>
+
+            <td>
+              ${value(
+                repair.custodian_employee_id
+              )}
+            </td>
+
+          </tr>
+
+
+          <tr>
+
+            <th>
+              Department
+            </th>
+
+            <td colspan="3">
+              ${value(
+                repair.department_name
+              )}
+            </td>
+
+          </tr>
+
+        </table>
+
+      </div>
+
+
+      <div class="section">
+
+        <div class="section-title">
+          Problem / Issue
+        </div>
+
+        <div class="text-box">
+          ${value(
+            repair.problem_description
+          )}
+        </div>
+
+      </div>
+
+
+      <div class="section">
+
+        <div class="section-title">
+          Diagnosis
+        </div>
+
+        <div class="text-box">
+          ${value(
+            repair.diagnosis
+          )}
+        </div>
+
+      </div>
+
+
+      <div class="section">
+
+        <div class="section-title">
+          Repair Action / Work Performed
+        </div>
+
+        <div class="text-box">
+          ${value(
+            repair.repair_action
+          )}
+        </div>
+
+      </div>
+
+
+      <div class="section">
+
+        <div class="section-title">
+          Parts / Materials Replaced
+        </div>
+
+        <div class="text-box">
+          ${value(
+            repair.parts_replaced
+          )}
+        </div>
+
+      </div>
+
+
+      <div class="section">
+
+        <div class="section-title">
+          Repair Cost
+        </div>
+
+        <table class="cost-table">
+
+          <tr>
+
+            <th>
+              Cost Description
+            </th>
+
+            <th>
+              Amount
+            </th>
+
+          </tr>
+
+
+          <tr>
+
+            <td>
+              Parts / Materials
+            </td>
+
+            <td>
+              ${money(
+                repair.parts_cost
+              )}
+            </td>
+
+          </tr>
+
+
+          <tr>
+
+            <td>
+              Labor / Service
+            </td>
+
+            <td>
+              ${money(
+                repair.labor_cost
+              )}
+            </td>
+
+          </tr>
+
+
+          <tr class="total-row">
+
+            <td>
+              TOTAL REPAIR COST
+            </td>
+
+            <td>
+              ${money(
+                repair.total_cost
+              )}
+            </td>
+
+          </tr>
+
+        </table>
+
+      </div>
+
+
+      <div class="section">
+
+        <div class="section-title">
+          Remarks / Additional Notes
+        </div>
+
+        <div class="text-box">
+          ${value(
+            repair.remarks
+          )}
+        </div>
+
+      </div>
+
+
+      <div class="section">
+
+        <div class="section-title">
+          Final Status / Disposition
+        </div>
+
+        <div class="text-box">
+          ${value(
+            repair.status
+          )}
+        </div>
+
+      </div>
+
+
+      <div class="section">
+
+        <div class="section-title">
+          Acknowledgement
+        </div>
+
+        <div class="acknowledgement">
+
+          I acknowledge that the above IT asset was inspected,
+          repaired, maintained, or otherwise processed as indicated
+          in this Repair Job Order / Maintenance Record.
+
+        </div>
+
+      </div>
+
+
+      <div class="signature">
+
+        <div class="signature-space"></div>
+
+        <div class="signature-role">
+          IT Technician
+        </div>
+
+        <div class="signature-note">
+          Signature over printed name / Date
+        </div>
+
+      </div>
+
+
+      <div class="footer">
+
+        Prima Fintech (Philippines) Lending Corporation
+        • IT Asset Management
+
+        <br>
+
+        Repair Job Order / Maintenance Record
+        •
+        ${value(
+          repair.repair_no
+        )}
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  renderCode128Barcode(
+    $('repairBarcode'),
+    repair.repair_no
+  );
+
+}
+
+
+$('printJobOrderPageBtn')
+  .addEventListener(
+    'click',
+    () => {
+      window.focus();
+      window.print();
+    }
+  );
+
+
+$('closeJobOrderPageBtn')
+  .addEventListener(
+    'click',
+    () => window.close()
+  );
+
+
+document.addEventListener(
+  'DOMContentLoaded',
+  loadRepair
+);
+
+</script>
+
+</body>
+
+</html>

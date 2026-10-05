@@ -1,0 +1,2797 @@
+
+
+<!doctype html>
+
+<html lang="en">
+
+
+
+<head>
+
+
+
+<meta charset="utf-8">
+
+
+
+<meta
+
+  name="viewport"
+
+  content="width=device-width, initial-scale=1"
+
+>
+
+
+
+<title>Maintenance - PRIMA IT Asset Management</title>
+
+
+
+<!-- =========================================================
+
+     BOOTSTRAP
+
+========================================================= -->
+
+<link
+
+  href="/vendor/bootstrap/bootstrap.min.css"
+
+  rel="stylesheet"
+
+>
+
+
+
+<!-- =========================================================
+
+     BOOTSTRAP ICONS
+
+========================================================= -->
+
+<link
+
+  rel="stylesheet"
+
+  href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+
+>
+
+
+
+<!-- =========================================================
+
+     PRIMA CSS
+
+========================================================= -->
+
+<link
+
+  rel="stylesheet"
+
+  href="/css/app.css"
+
+>
+
+
+
+<link
+
+  rel="stylesheet"
+
+  href="/css/maintenance.css?v=3"
+
+>
+
+
+
+  <meta name="theme-color" content="#0b1118">
+
+<link
+
+  data-dark-theme
+
+  rel="stylesheet"
+
+  href="/css/dark-theme.css"
+
+>
+
+
+
+<link
+
+  data-dark-theme
+
+  rel="stylesheet"
+
+  href="/css/dark-components.css"
+
+>
+
+  <link rel="stylesheet" href="/css/navigation.css?v=4">
+
+  <script src="/js/theme.js"></script>
+<script src="/js/alerts.js?v=2"></script>
+
+
+</head>
+
+
+
+
+
+<body>
+
+
+
+<!-- =========================================================
+
+     UNIVERSAL NAVBAR
+
+
+
+     navbar.js will create the sidebar here.
+
+========================================================= -->
+
+
+
+<div id="sidebar"></div>
+
+
+
+
+
+<!-- =========================================================
+
+     MAIN CONTENT
+
+========================================================= -->
+
+
+
+<main class="main-content">
+
+
+
+  <div
+
+    class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4"
+
+  >
+
+
+
+    <div>
+
+
+
+      <h2 class="fw-bold mb-1">
+
+        Maintenance / Repair
+
+      </h2>
+
+
+
+      <p class="text-muted mb-0">
+
+        Record repair work, track progress, costs, and final disposition.
+
+      </p>
+
+
+
+    </div>
+
+
+
+    <button
+
+      id="newRepairBtn"
+
+      class="btn btn-primary"
+
+      type="button"
+
+    >
+
+      🔧 Start Repair
+
+    </button>
+
+
+
+  </div>
+
+
+
+
+
+  <div id="alertBox"></div>
+
+
+
+
+
+  <!-- =======================================================
+       MAINTENANCE STATISTICS
+  ======================================================== -->
+
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card maintenance-stat-card h-100">
+        <div class="card-body">
+          <div class="label">Under Repair</div>
+          <div id="underRepair" class="value">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card maintenance-stat-card h-100">
+        <div class="card-body">
+          <div class="label">Repaired</div>
+          <div id="repaired" class="value">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card maintenance-stat-card h-100">
+        <div class="card-body">
+          <div class="label">For Disposal</div>
+          <div id="forDisposal" class="value">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card maintenance-stat-card h-100">
+        <div class="card-body">
+          <div class="label">Total Repair Cost</div>
+          <div id="totalRepairCost" class="value">₱0.00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- =======================================================
+
+       SEARCH / FILTERS
+
+  ======================================================== -->
+
+
+
+  <div class="card border-0 shadow-sm mb-4">
+
+
+
+    <div class="card-body">
+
+
+
+      <div class="row g-2">
+
+
+
+        <div class="col-lg-6">
+
+
+
+          <label for="repairSearch" class="form-label small text-muted">
+
+            Search
+
+          </label>
+
+
+
+          <input
+
+            id="repairSearch"
+
+            class="form-control"
+
+            placeholder="Repair No., Asset ID, asset name, serial, custodian, technician..."
+
+          >
+
+
+
+        </div>
+
+
+
+
+
+        <div class="col-md-3 col-lg-3">
+
+
+
+          <label for="repairStatusFilter" class="form-label small text-muted">
+
+            Status
+
+          </label>
+
+
+
+          <select
+
+            id="repairStatusFilter"
+
+            class="form-select"
+
+          >
+
+
+
+            <option value="">
+
+              All Status
+
+            </option>
+
+
+
+            <option>
+
+              For Repair
+
+            </option>
+
+
+
+            <option>
+
+              Under Diagnosis
+
+            </option>
+
+
+
+            <option>
+
+              Under Repair
+
+            </option>
+
+
+
+            <option>
+
+              Waiting for Parts
+
+            </option>
+
+
+
+            <option>
+
+              Repaired
+
+            </option>
+
+
+
+            <option>
+
+              Returned
+
+            </option>
+
+
+
+            <option>
+
+              Beyond Repair
+
+            </option>
+
+
+
+            <option>
+
+              Cancelled
+
+            </option>
+
+
+
+          </select>
+
+
+
+        </div>
+
+<div class="col-lg-1 d-flex align-items-end">
+
+
+
+          <button
+
+            id="clearRepairFiltersBtn"
+
+            class="btn btn-outline-secondary w-100"
+
+            type="button"
+
+          >
+
+            Clear
+
+          </button>
+
+
+
+        </div>
+
+
+
+      </div>
+
+
+
+    </div>
+
+
+
+  </div>
+
+
+
+
+
+  <!-- =======================================================
+
+       REPAIR RECORDS
+
+  ======================================================== -->
+
+
+
+  <div class="card border-0 shadow-sm">
+
+
+
+    <div class="card-body">
+
+
+
+      <div
+
+        class="d-flex justify-content-between align-items-center mb-3"
+
+      >
+
+
+
+        <div>
+
+
+
+          <h5 class="mb-1">
+
+            Repair Records
+
+          </h5>
+
+
+
+          <div
+
+            id="repairCount"
+
+            class="small text-muted"
+
+          >
+
+            0 records
+
+          </div>
+
+
+
+        </div>
+
+
+
+
+
+        <button
+
+          id="refreshRepairsBtn"
+
+          class="btn btn-outline-secondary btn-sm"
+
+          type="button"
+
+        >
+
+          ↻ Refresh
+
+        </button>
+
+
+
+      </div>
+
+
+
+
+
+      <div class="table-responsive repair-records-scroll">
+
+
+
+  <table
+
+    class="table table-hover maintenance-table mb-0"
+
+  >
+
+
+
+    <thead>
+
+
+
+      <tr>
+
+
+
+        <th
+          scope="col"
+          class="repair-sticky-col repair-col-repair-no"
+        >
+
+          Repair No.
+
+        </th>
+
+
+
+        <th
+          scope="col"
+          class="repair-sticky-col repair-col-asset-id"
+        >
+
+          Asset ID
+
+        </th>
+
+
+
+        <th scope="col">
+
+          Asset
+
+        </th>
+
+
+
+        <th scope="col">
+
+          Custodian
+
+        </th>
+        <th scope="col">
+
+          Date Reported
+
+        </th>
+
+
+
+        <th scope="col">
+
+          Technician
+
+        </th>
+
+
+
+        <th scope="col">
+
+          Status
+
+        </th>
+
+
+
+        <th scope="col">
+
+          Total Cost
+
+        </th>
+
+
+
+        <th
+          scope="col"
+          class="repair-sticky-col repair-col-action"
+        >
+
+          Action
+
+        </th>
+
+
+
+      </tr>
+
+
+
+    </thead>
+
+
+
+    <tbody id="repairTableBody"></tbody>
+
+
+
+  </table>
+
+
+
+</div>
+
+
+
+    </div>
+
+
+
+  </div>
+
+
+
+</main>
+
+
+
+
+
+<!-- ============================================================
+
+     REPAIR MODAL
+
+============================================================ -->
+
+
+
+<div
+
+  class="modal fade"
+
+  id="repairModal"
+
+  tabindex="-1"
+
+>
+
+
+
+  <div
+
+    class="modal-dialog modal-xl modal-dialog-scrollable"
+
+  >
+
+
+
+    <div class="modal-content border-0 shadow">
+
+
+
+      <form
+
+        id="repairForm"
+
+        class="repair-form"
+
+        novalidate
+
+      >
+
+
+
+        <!-- HEADER -->
+
+
+
+        <div class="modal-header">
+
+
+
+          <div>
+
+
+
+            <h5
+
+              id="repairModalTitle"
+
+              class="modal-title"
+
+            >
+
+              Start Repair
+
+            </h5>
+
+
+
+            <div class="small text-muted">
+
+              Record the problem, diagnosis, and repair work in one form.
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <button
+
+            type="button"
+
+            class="btn-close"
+
+            data-bs-dismiss="modal"
+
+            aria-label="Close"
+
+          ></button>
+
+
+
+        </div>
+
+
+
+
+
+        <!-- BODY -->
+
+
+
+        <div class="modal-body">
+
+
+
+          <div id="repairFormAlert"></div>
+
+
+
+          <input
+
+            type="hidden"
+
+            id="repairId"
+
+          >
+
+
+
+
+
+          <div class="row g-3">
+
+
+
+
+
+            <!-- ASSET -->
+
+
+
+            <div class="col-md-6">
+
+
+
+              <label for="repairAssetSearch" class="form-label fw-semibold">
+
+                Asset *
+
+              </label>
+
+
+
+              <div class="input-group">
+
+
+
+                <input
+
+                  id="repairAssetSearch"
+
+                  class="form-control"
+
+                  placeholder="Type Asset ID / name..."
+
+                  autocomplete="off"
+
+                >
+
+
+
+                <button
+
+                  id="loadAssetBtn"
+
+                  type="button"
+
+                  class="btn btn-outline-primary"
+
+                >
+
+                  Find
+
+                </button>
+
+
+
+              </div>
+
+
+
+
+
+              <input
+
+                type="hidden"
+
+                id="repairAssetId"
+
+              >
+
+
+
+
+
+              <div
+
+                id="repairAssetInfo"
+
+                class="small text-muted mt-2"
+
+              >
+
+                Select an asset before saving.
+
+              </div>
+
+
+
+            </div>
+
+            <!-- PRIORITY
+                 Hidden for backward compatibility with the current API/JS.
+                 Priority is no longer shown in the simplified repair workflow. -->
+            <input
+              type="hidden"
+              id="repairPriority"
+              value="Medium"
+            >
+
+<!-- DATE REPORTED -->
+
+
+
+            <div class="col-md-6">
+
+
+
+              <label for="repairDateReported" class="form-label fw-semibold">
+
+                Date Reported
+
+              </label>
+
+
+
+              <input
+
+                id="repairDateReported"
+
+                type="datetime-local"
+
+                class="form-control"
+
+              >
+
+
+
+            </div>
+
+
+
+
+
+            <!-- DATE RECEIVED -->
+
+
+
+            <div class="col-md-4">
+
+
+
+              <label for="repairDateReceived" class="form-label fw-semibold">
+
+                Date Received
+
+              </label>
+
+
+
+              <input
+
+                id="repairDateReceived"
+
+                type="datetime-local"
+
+                class="form-control"
+
+              >
+
+
+
+            </div>
+
+
+
+
+
+            <!-- INITIAL CONDITION -->
+
+
+
+            <div class="col-md-4">
+
+
+
+              <label for="repairInitialCondition" class="form-label fw-semibold">
+
+                Initial Condition
+
+              </label>
+
+
+
+              <select
+
+                id="repairInitialCondition"
+
+                class="form-select"
+
+              >
+
+
+
+                <option>
+
+                  New
+
+                </option>
+
+
+
+                <option selected>
+
+                  Good
+
+                </option>
+
+
+
+                <option>
+
+                  Fair
+
+                </option>
+
+
+
+                <option>
+
+                  Damaged
+
+                </option>
+
+
+
+              </select>
+
+
+
+            </div>
+
+
+
+
+
+            <!-- TECHNICIAN -->
+
+
+
+            <div class="col-md-4">
+
+
+
+              <label for="repairTechnician" class="form-label fw-semibold">
+
+                Technician
+
+              </label>
+
+
+
+              <select
+
+                id="repairTechnician"
+
+                class="form-select"
+
+              >
+
+
+
+                <option value="">
+
+                  Unassigned
+
+                </option>
+
+
+
+              </select>
+
+
+
+            </div>
+
+
+
+
+
+            <!-- VENDOR -->
+
+
+
+            <div class="col-md-6">
+
+
+
+              <label for="repairVendor" class="form-label fw-semibold">
+
+                Vendor / Repair Center
+
+              </label>
+
+
+
+              <input
+
+                id="repairVendor"
+
+                class="form-control"
+
+              >
+
+
+
+            </div>
+
+
+
+
+
+            <!-- WARRANTY -->
+
+
+
+            <div class="col-md-6">
+
+
+
+              <label for="repairWarranty" class="form-label fw-semibold">
+
+                Warranty / Service Contract
+
+              </label>
+
+
+
+              <input
+
+                id="repairWarranty"
+
+                class="form-control"
+
+              >
+
+
+
+            </div>
+
+
+
+
+
+            <!-- PROBLEM -->
+
+
+
+            <div class="col-12">
+
+
+
+              <label for="repairProblem" class="form-label fw-semibold">
+
+                Problem / Issue *
+
+              </label>
+
+
+
+              <textarea
+
+                id="repairProblem"
+
+                class="form-control"
+
+                rows="3"
+
+              ></textarea>
+
+
+
+            </div>
+
+
+
+
+
+            <!-- DIAGNOSIS -->
+
+
+
+            <div class="col-md-6">
+
+
+
+              <label for="repairDiagnosis" class="form-label fw-semibold">
+
+                Diagnosis
+
+              </label>
+
+
+
+              <textarea
+
+                id="repairDiagnosis"
+
+                class="form-control"
+
+                rows="4"
+
+              ></textarea>
+
+
+
+            </div>
+
+
+
+
+
+            <!-- REPAIR ACTION -->
+
+
+
+            <div class="col-md-6">
+
+
+
+              <label for="repairAction" class="form-label fw-semibold">
+
+                Repair Action
+
+              </label>
+
+
+
+              <textarea
+
+                id="repairAction"
+
+                class="form-control"
+
+                rows="4"
+
+              ></textarea>
+
+
+
+            </div>
+
+
+
+
+
+            <!-- PARTS -->
+
+
+
+            <div class="col-12">
+
+
+
+              <label for="repairPartsReplaced" class="form-label fw-semibold">
+
+                Parts Replaced
+
+              </label>
+
+
+
+              <textarea
+
+                id="repairPartsReplaced"
+
+                class="form-control"
+
+                rows="2"
+
+              ></textarea>
+
+
+
+            </div>
+
+
+
+
+
+            <!-- PARTS COST -->
+
+
+
+            <div class="col-md-4">
+
+
+
+              <label for="repairPartsCost" class="form-label fw-semibold">
+
+                Parts Cost
+
+              </label>
+
+
+
+              <input
+
+                id="repairPartsCost"
+
+                type="number"
+
+                min="0"
+
+                step="0.01"
+
+                value="0"
+
+                class="form-control"
+
+              >
+
+
+
+            </div>
+
+
+
+
+
+            <!-- LABOR COST -->
+
+
+
+            <div class="col-md-4">
+
+
+
+              <label for="repairLaborCost" class="form-label fw-semibold">
+
+                Labor Cost
+
+              </label>
+
+
+
+              <input
+
+                id="repairLaborCost"
+
+                type="number"
+
+                min="0"
+
+                step="0.01"
+
+                value="0"
+
+                class="form-control"
+
+              >
+
+
+
+            </div>
+
+            <!-- STATUS
+                 New repair records automatically start as Under Repair.
+                 Kept hidden so the existing maintenance.js remains compatible
+                 until the JavaScript is simplified in the next step. -->
+            <input
+              type="hidden"
+              id="repairStatus"
+              value="Under Repair"
+            >
+
+<!-- REMARKS -->
+
+
+
+            <div class="col-12">
+
+
+
+              <label for="repairRemarks" class="form-label fw-semibold">
+
+                Remarks
+
+              </label>
+
+
+
+              <textarea
+
+                id="repairRemarks"
+
+                class="form-control"
+
+                rows="3"
+
+              ></textarea>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+
+
+        <!-- FOOTER -->
+
+
+
+        <div class="modal-footer">
+
+
+
+          <button
+
+            type="button"
+
+            class="btn btn-light"
+
+            data-bs-dismiss="modal"
+
+          >
+
+            Cancel
+
+          </button>
+
+
+
+          <button
+
+            id="saveRepairBtn"
+
+            type="submit"
+
+            class="btn btn-primary"
+
+          >
+
+            Save Repair Record
+
+          </button>
+
+
+
+        </div>
+
+
+
+      </form>
+
+
+
+    </div>
+
+
+
+  </div>
+
+
+
+</div>
+
+
+
+
+
+<!-- ============================================================
+
+     REPAIR DETAILS MODAL
+
+============================================================ -->
+
+
+
+<div
+
+  class="modal fade"
+
+  id="repairDetailsModal"
+
+  tabindex="-1"
+
+>
+
+
+
+  <div
+
+    class="modal-dialog modal-xl modal-dialog-scrollable"
+
+  >
+
+
+
+    <div class="modal-content border-0 shadow">
+
+
+
+
+
+      <div class="modal-header">
+
+
+
+        <div>
+
+
+
+          <h5 class="modal-title">
+
+            🔧 Repair Details
+
+          </h5>
+
+
+
+          <div
+
+            id="repairDetailsSubTitle"
+
+            class="small text-muted"
+
+          >
+
+            —
+
+          </div>
+
+
+
+        </div>
+
+
+
+
+
+        <button
+
+          id="closeRepairDetailsHeaderBtn"
+
+          type="button"
+
+          class="btn-close"
+
+          aria-label="Close repair details"
+
+        ></button>
+
+
+
+      </div>
+
+
+
+
+
+      <div class="modal-body">
+
+
+
+        <div id="repairDetailsAlert"></div>
+
+
+
+
+
+        <div class="row g-3">
+
+
+
+
+
+          <div class="col-md-3">
+
+
+
+            <div class="repair-detail-label">
+
+              Repair No.
+
+            </div>
+
+
+
+            <div
+
+              id="detailRepairNo"
+
+              class="repair-detail-value"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-md-3">
+
+
+
+            <div class="repair-detail-label">
+
+              Asset ID
+
+            </div>
+
+
+
+            <div
+
+              id="detailAssetId"
+
+              class="repair-detail-value"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-md-3">
+
+
+
+            <div class="repair-detail-label">
+
+              Asset
+
+            </div>
+
+
+
+            <div
+
+              id="detailAssetName"
+
+              class="repair-detail-value"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-md-3">
+
+
+
+            <div class="repair-detail-label">
+
+              Asset Status
+
+            </div>
+
+
+
+            <div
+
+              id="detailAssetStatus"
+
+              class="repair-detail-value"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-md-3">
+
+
+
+            <div class="repair-detail-label">
+
+              Custodian
+
+            </div>
+
+
+
+            <div
+
+              id="detailCustodian"
+
+              class="repair-detail-value"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-md-3">
+
+
+
+            <div class="repair-detail-label">
+
+              Department
+
+            </div>
+
+
+
+            <div
+
+              id="detailDepartment"
+
+              class="repair-detail-value"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-md-3">
+
+
+
+            <div class="repair-detail-label">
+
+              Technician
+
+            </div>
+
+
+
+            <div
+
+              id="detailTechnician"
+
+              class="repair-detail-value"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+          <!-- Hidden compatibility target for the current maintenance.js.
+               Priority is no longer displayed to users. -->
+          <div id="detailPriority" class="d-none"></div>
+
+<div class="col-md-3">
+
+
+
+            <div class="repair-detail-label">
+
+              Date Reported
+
+            </div>
+
+
+
+            <div
+
+              id="detailDateReported"
+
+              class="repair-detail-value"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-md-3">
+
+
+
+            <div class="repair-detail-label">
+
+              Date Received
+
+            </div>
+
+
+
+            <div
+
+              id="detailDateReceived"
+
+              class="repair-detail-value"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-md-3">
+
+
+
+            <div class="repair-detail-label">
+
+              Date Completed
+
+            </div>
+
+
+
+            <div
+
+              id="detailDateCompleted"
+
+              class="repair-detail-value"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-md-3">
+
+
+
+            <div class="repair-detail-label">
+
+              Total Cost
+
+            </div>
+
+
+
+            <div
+
+              id="detailTotalCost"
+
+              class="repair-detail-value"
+
+            >
+
+              ₱0.00
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-12">
+
+
+
+            <div class="repair-detail-label mb-1">
+
+              Problem / Issue
+
+            </div>
+
+
+
+            <div
+
+              id="detailProblem"
+
+              class="issue-box"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-md-6">
+
+
+
+            <div class="repair-detail-label mb-1">
+
+              Diagnosis
+
+            </div>
+
+
+
+            <div
+
+              id="detailDiagnosis"
+
+              class="issue-box"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-md-6">
+
+
+
+            <div class="repair-detail-label mb-1">
+
+              Repair Action
+
+            </div>
+
+
+
+            <div
+
+              id="detailAction"
+
+              class="issue-box"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-md-6">
+
+
+
+            <div class="repair-detail-label mb-1">
+
+              Parts Replaced
+
+            </div>
+
+
+
+            <div
+
+              id="detailParts"
+
+              class="issue-box"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-md-6">
+
+
+
+            <div class="repair-detail-label mb-1">
+
+              Remarks
+
+            </div>
+
+
+
+            <div
+
+              id="detailRemarks"
+
+              class="issue-box"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-md-6">
+
+
+
+            <div class="repair-detail-label">
+
+              Vendor / Repair Center
+
+            </div>
+
+
+
+            <div
+
+              id="detailVendor"
+
+              class="repair-detail-value"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+          <div class="col-md-6">
+
+
+
+            <div class="repair-detail-label">
+
+              Warranty / Service Contract
+
+            </div>
+
+
+
+            <div
+
+              id="detailWarranty"
+
+              class="repair-detail-value"
+
+            >
+
+              —
+
+            </div>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+
+
+  <hr class="my-4">
+
+
+<!-- =========================================================
+     SIMPLE REPAIR ACTIONS
+========================================================= -->
+
+<div class="card border-0 bg-body-tertiary">
+
+  <div class="card-body">
+
+    <div
+      class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3"
+    >
+
+      <div>
+
+        <div class="small text-muted">
+          Current Repair Status
+        </div>
+
+        <div
+          id="detailCurrentStatus"
+          class="mt-1"
+        >
+          —
+        </div>
+
+      </div>
+
+
+      <div class="small text-muted">
+        Select the next action for this repair.
+      </div>
+
+    </div>
+
+
+    <!-- ACTION BUTTONS -->
+
+    <div
+      id="repairActionButtons"
+      class="d-flex flex-wrap gap-2"
+    >
+
+      <button
+        id="resumeRepairBtn"
+        type="button"
+        class="btn btn-outline-primary d-none"
+      >
+        ▶ Resume Repair
+      </button>
+
+
+      <button
+        id="waitingForPartsBtn"
+        type="button"
+        class="btn btn-outline-warning d-none"
+      >
+        ⏸ Waiting for Parts
+      </button>
+
+
+      <button
+        id="markRepairedBtn"
+        type="button"
+        class="btn btn-success d-none"
+      >
+        ✅ Mark Repaired
+      </button>
+
+
+      <button
+        id="returnToCustodianBtn"
+        type="button"
+        class="btn btn-outline-primary d-none"
+      >
+        👤 Return to Custodian
+      </button>
+
+
+      <button
+        id="returnToInventoryBtn"
+        type="button"
+        class="btn btn-outline-success d-none"
+      >
+        📦 Put in Inventory
+      </button>
+
+
+      <button
+        id="markBeyondRepairBtn"
+        type="button"
+        class="btn btn-outline-danger d-none"
+      >
+        ⚠️ For Disposal
+      </button>
+
+    </div>
+
+
+    <!-- CLOSED / COMPLETED MESSAGE -->
+
+    <div
+      id="repairCompletedMessage"
+      class="alert alert-secondary mt-3 mb-0 d-none"
+    ></div>
+
+
+    <!-- DISPOSAL FORM -->
+
+    <div
+      id="beyondRepairDisposition"
+      class="border rounded p-3 mt-3 d-none"
+    >
+
+      <div class="fw-semibold mb-1">
+        Send Asset for Disposal
+      </div>
+
+      <div class="small text-muted mb-3">
+        Create a disposal request for this asset.
+      </div>
+
+
+      <div class="mb-3">
+
+        <label
+          for="disposalMethod"
+          class="form-label fw-semibold"
+        >
+          Disposal Method *
+        </label>
+
+        <textarea
+          id="disposalMethod"
+          class="form-control"
+          rows="2"
+          placeholder="Example: E-waste disposal, scrap, vendor disposal..."
+        ></textarea>
+
+      </div>
+
+
+      <div class="mb-3">
+
+        <label
+          for="detailDispositionRemarks"
+          class="form-label"
+        >
+          Remarks
+        </label>
+
+        <textarea
+          id="detailDispositionRemarks"
+          class="form-control"
+          rows="2"
+          placeholder="Reason or additional details..."
+        ></textarea>
+
+      </div>
+
+
+      <div class="d-flex gap-2">
+
+        <button
+          id="cancelDisposalBtn"
+          type="button"
+          class="btn btn-light"
+        >
+          Cancel
+        </button>
+
+
+        <button
+          id="saveDispositionBtn"
+          type="button"
+          class="btn btn-danger"
+        >
+          Create Disposal Request
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+  <!-- LEGACY FINAL DISPOSITION (replaced by the simple repair actions above) -->
+
+
+
+<div class="col-lg-6 d-none" aria-hidden="true">
+
+
+
+  <div class="fw-semibold mb-2">
+
+    Final Disposition
+
+  </div>
+
+
+
+  <div class="d-flex flex-wrap gap-2">
+
+
+
+    <button
+
+      id="legacyReturnToCustodianBtn"
+
+      type="button"
+
+      class="btn btn-outline-primary"
+
+    >
+
+      👤 Return to Custodian
+
+    </button>
+
+
+
+    <button
+
+      id="legacyReturnToInventoryBtn"
+
+      type="button"
+
+      class="btn btn-outline-success"
+
+    >
+
+      📦 Put in Inventory
+
+    </button>
+
+
+
+<button id="legacyMarkBeyondRepairBtn"
+
+        type="button"
+
+        class="btn btn-outline-danger"
+
+        disabled>
+
+  ⚠️ For Disposal
+
+</button>
+
+
+
+  </div>
+
+
+
+  <div
+
+    id="legacyBeyondRepairDisposition"
+
+    class="mt-3"
+
+    style="display:none;"
+
+  >
+
+
+
+    <label
+
+      for="legacyDetailDispositionSelect"
+
+      class="form-label fw-semibold"
+
+    >
+
+      Beyond Repair Disposition
+
+    </label>
+
+
+
+    <select
+
+      id="legacyDetailDispositionSelect"
+
+      class="form-select"
+
+    >
+
+
+
+      <option value="Pending Decision">
+
+        Pending Decision
+
+      </option>
+
+
+
+      <option value="Dispose">
+
+        Dispose
+
+      </option>
+
+
+
+      <option value="Retire">
+
+        Retire
+
+      </option>
+
+
+
+      <option value="Keep for Spare Parts">
+
+        Keep for Spare Parts
+
+      </option>
+
+
+
+    </select>
+
+
+
+    <div
+
+      id="legacyDisposalMethodContainer"
+
+      class="mt-3"
+
+      style="display:none;"
+
+    >
+
+      <label
+
+        for="legacyDisposalMethod"
+
+        class="form-label fw-semibold"
+
+      >
+
+        Disposal Method
+
+      </label>
+
+
+
+      <textarea
+
+        id="legacyDisposalMethod"
+
+        class="form-control"
+
+        rows="3"
+
+        placeholder="Enter disposal method..."
+
+      ></textarea>
+
+
+
+      <div class="form-text">
+
+        Fill in the disposal method. This is a free-text field.
+
+      </div>
+
+    </div>
+
+
+
+    <div class="mt-2">
+
+
+
+      <label
+
+        for="legacyDetailDispositionRemarks"
+
+        class="form-label"
+
+      >
+
+        Disposition Remarks
+
+      </label>
+
+
+
+      <textarea
+
+        id="legacyDetailDispositionRemarks"
+
+        class="form-control"
+
+        rows="3"
+
+        placeholder="Enter reason or additional details..."
+
+      ></textarea>
+
+
+
+    </div>
+
+
+
+    <button
+
+      id="legacySaveDispositionBtn"
+
+      type="button"
+
+      class="btn btn-danger mt-2"
+
+    >
+
+      Save Disposition
+
+    </button>
+
+
+
+  </div>
+
+
+
+  <div class="page-note mt-2">
+
+    Repaired items can be returned to the custodian or inventory.
+
+    Beyond-repair items require a final disposition.
+
+  </div>
+
+
+
+</div>
+
+
+
+        </div>
+
+
+
+      <!-- MODAL FOOTER -->
+
+
+
+      <div class="modal-footer">
+
+
+
+        <button
+
+          id="closeRepairDetailsBtn"
+
+          type="button"
+
+          class="btn btn-light"
+
+        >
+
+          Close
+
+        </button>
+
+
+
+
+
+        <button
+          id="printRepairJobOrderBtn"
+          type="button"
+          class="btn btn-outline-light"
+          disabled
+        >
+          <i class="bi bi-printer me-1" aria-hidden="true"></i>
+          Print Job Order
+        </button>
+
+
+
+
+
+        <button
+
+          id="editRepairBtn"
+
+          type="button"
+
+          class="btn btn-outline-primary"
+
+        >
+
+          ✏️ Edit Record
+
+        </button>
+
+
+
+      </div>
+
+
+
+    </div>
+
+
+
+  </div>
+
+
+
+</div>
+
+
+
+
+
+<!-- =========================================================
+
+     JAVASCRIPT
+
+
+
+     IMPORTANT ORDER:
+
+
+
+     1. Bootstrap
+
+     2. html5-qrcode
+
+     3. Universal Navbar
+
+     4. Maintenance JS
+
+     5. Global Asset Scanner
+
+========================================================= -->
+
+
+
+<script
+
+  src="/vendor/bootstrap/bootstrap.bundle.min.js"
+
+></script>
+
+
+
+
+
+<!-- QR / BARCODE SCANNER LIBRARY -->
+
+
+
+<script
+
+  src="https://unpkg.com/html5-qrcode"
+
+  type="text/javascript"
+
+></script>
+
+
+
+
+
+<!-- UNIVERSAL NAVBAR -->
+
+
+
+<script src="/js/navbar.js?v=5"></script>
+
+
+
+
+
+<!-- MAINTENANCE PAGE -->
+
+
+
+<script src="/js/maintenance.js?v=26"></script>
+
+
+<!-- =========================================================
+     TEMPORARY COMPATIBILITY BRIDGE
+     The current maintenance.js still assigns "For Repair"
+     when opening a new repair. This changes NEW records back
+     to "Under Repair" before the modal is shown.
+     We will remove this after maintenance.js is simplified.
+========================================================= -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  const repairModalElement =
+    document.getElementById('repairModal');
+
+  if (!repairModalElement) {
+    return;
+  }
+
+  repairModalElement.addEventListener(
+    'show.bs.modal',
+    function () {
+
+      const repairId =
+        document.getElementById('repairId');
+
+      const repairStatus =
+        document.getElementById('repairStatus');
+
+      if (
+        repairStatus &&
+        !(repairId && repairId.value)
+      ) {
+        repairStatus.value =
+          'Under Repair';
+      }
+
+    }
+  );
+
+});
+</script>
+
+
+
+
+
+
+
+<!-- GLOBAL ASSET SCANNER -->
+
+
+
+<script src="/js/asset-scanner.js?v=5"></script>
+
+
+
+
+
+</body>
+
+</html>

@@ -1,0 +1,76 @@
+
+/* ============================================================
+   PRIMA IT ASSET MANAGEMENT
+   REPORTS.CSS
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   REPORT KPI CARDS
+   ------------------------------------------------------------ */
+
+.report-kpi {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 1rem 1.05rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  height: 100%;
+}
+
+.report-kpi .label {
+  font-size: 0.78rem;
+  color: #6c757d;
+}
+
+.report-kpi .value {
+  font-size: 1.55rem;
+  font-weight: 700;
+  margin-top: 0.2rem;
+}
+
+.report-kpi .currency {
+  font-size: 1.2rem;
+}
+
+
+/* ------------------------------------------------------------
+   REPORT TABLE
+   ------------------------------------------------------------ */
+
+.report-table th {
+  white-space: nowrap;
+  font-size: 0.78rem;
+}
+
+.report-table td {
+  font-size: 0.82rem;
+}
+
+.report-table tbody tr {
+  vertical-align: middle;
+}
+
+
+/* ------------------------------------------------------------
+   PDF REPORT INFORMATION / NOTICE
+   ------------------------------------------------------------ */
+
+.report-print-note {
+  border: 1px dashed #ced4da;
+  border-radius: 10px;
+  background: #f8f9fa;
+  color: #6c757d;
+  font-size: 0.84rem;
+  padding: 0.8rem 0.95rem;
+}
+
+
+/* ------------------------------------------------------------
+   PRINT
+   ------------------------------------------------------------ */
+
+@media print {
+  body {
+    background: #fff;
+  }
+}

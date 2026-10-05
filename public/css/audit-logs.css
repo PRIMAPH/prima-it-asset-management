@@ -1,0 +1,151 @@
+/* ============================================================
+   PRIMA IT ASSET MANAGEMENT
+   AUDIT LOGS.CSS
+   ============================================================ */
+
+
+/* ------------------------------------------------------------
+   NOTICE
+   ------------------------------------------------------------ */
+
+.audit-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+
+  padding: 1rem 1.1rem;
+
+  background: #f8f9fa;
+
+  border: 1px dashed #ced4da;
+
+  border-radius: 12px;
+}
+
+.audit-notice-icon {
+  width: 42px;
+  height: 42px;
+
+  min-width: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #e7f1ff;
+
+  border-radius: 10px;
+
+  font-size: 1.2rem;
+}
+
+
+/* ------------------------------------------------------------
+   TABLE
+   ------------------------------------------------------------ */
+
+.audit-table {
+  min-width: 1050px;
+}
+
+.audit-table th {
+  white-space: nowrap;
+
+  font-size: 0.76rem;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.025em;
+
+  color: #6c757d;
+
+  background: #f8f9fa;
+}
+
+.audit-table td {
+  font-size: 0.82rem;
+
+  vertical-align: middle;
+}
+
+
+/* ------------------------------------------------------------
+   ACTION BADGES
+   ------------------------------------------------------------ */
+
+.audit-action {
+  display: inline-block;
+
+  padding: 0.35rem 0.55rem;
+
+  border-radius: 6px;
+
+  font-size: 0.7rem;
+
+  font-weight: 700;
+
+  letter-spacing: 0.02em;
+}
+
+
+/* ------------------------------------------------------------
+   DETAILS
+   ------------------------------------------------------------ */
+
+.audit-details {
+  max-width: 420px;
+
+  white-space: normal;
+
+  word-break: break-word;
+
+  color: #495057;
+}
+
+.audit-details pre {
+  margin: 0;
+
+  font-family: inherit;
+
+  font-size: 0.78rem;
+
+  white-space: pre-wrap;
+
+  word-break: break-word;
+}
+
+
+/* ------------------------------------------------------------
+   REFERENCE
+   ------------------------------------------------------------ */
+
+.audit-reference {
+  font-weight: 600;
+}
+
+.audit-reference small {
+  display: block;
+
+  color: #6c757d;
+
+  font-weight: 400;
+
+  margin-top: 2px;
+}
+
+
+/* ------------------------------------------------------------
+   PRINT
+   ------------------------------------------------------------ */
+
+@media print {
+
+  body {
+    background: #fff !important;
+  }
+
+  .audit-notice {
+    border: 1px solid #999;
+  }
+
+}

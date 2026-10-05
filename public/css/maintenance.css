@@ -1,0 +1,126 @@
+.maintenance-stat-card{border:0;border-radius:14px;box-shadow:0 .2rem .9rem rgba(0,0,0,.06)}
+.maintenance-stat-card .label{color:#6c757d;font-size:.82rem;margin-bottom:4px}.maintenance-stat-card .value{font-size:1.7rem;font-weight:700}
+.maintenance-table td,.maintenance-table th{white-space:nowrap;vertical-align:middle}.repair-status-badge{min-width:105px;display:inline-block;text-align:center}
+
+/* Keep repair identifiers and actions visible during horizontal scrolling. */
+.repair-records-scroll {
+  position: relative;
+  max-width: 100%;
+  overflow: auto;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+}
+
+.maintenance-table {
+  min-width: 1200px;
+}
+
+.maintenance-table .repair-sticky-col {
+  position: sticky;
+  background-color: var(--bs-table-bg, #fff);
+}
+
+.maintenance-table tbody .repair-sticky-col {
+  z-index: 4;
+}
+
+.maintenance-table thead .repair-sticky-col {
+  z-index: 24;
+}
+
+.maintenance-table .repair-col-repair-no {
+  left: 0;
+  width: 165px;
+  min-width: 165px;
+  max-width: 165px;
+}
+
+.maintenance-table .repair-col-asset-id {
+  left: 165px;
+  width: 170px;
+  min-width: 170px;
+  max-width: 170px;
+  box-shadow: 1px 0 0 var(--ui-border, #dee2e6);
+}
+
+.maintenance-table .repair-col-action {
+  right: 0;
+  width: 130px;
+  min-width: 130px;
+  box-shadow: -1px 0 0 var(--ui-border, #dee2e6);
+}
+
+.maintenance-table .repair-col-action .d-flex {
+  flex-wrap: nowrap;
+}
+.repair-detail-label{color:#6c757d;font-size:.78rem;text-transform:uppercase;letter-spacing:.02em}.repair-detail-value{font-weight:600;word-break:break-word}
+.issue-box{background:#f8f9fa;border:1px solid #e9ecef;border-radius:10px;padding:12px;white-space:pre-wrap}.page-note{font-size:.85rem;color:#6c757d}
+/* ============================================================
+   REPAIR FORM MODAL SCROLL FIX
+   ============================================================ */
+
+#repairModal .modal-dialog {
+  max-height: calc(100vh - 1rem);
+}
+
+#repairModal .modal-content {
+  max-height: calc(100vh - 1rem);
+  overflow: hidden;
+}
+
+#repairModal .repair-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+#repairModal .modal-header,
+#repairModal .modal-footer {
+  flex-shrink: 0;
+}
+
+#repairModal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1rem 1.25rem;
+}
+
+/* Keep mouse-wheel scrolling inside Repair Details while it is open. */
+#repairDetailsModal .modal-dialog {
+  max-height: calc(100vh - 1rem);
+}
+
+#repairDetailsModal .modal-content {
+  max-height: calc(100vh - 1rem);
+  overflow: hidden;
+}
+
+#repairDetailsModal .modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+}
+
+/* Better scrollbar */
+#repairModal .modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+#repairModal .modal-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+#repairModal .modal-body::-webkit-scrollbar-thumb {
+  background: #adb5bd;
+  border-radius: 10px;
+}
+
+#repairModal .modal-body::-webkit-scrollbar-thumb:hover {
+  background: #6c757d;
+}
+

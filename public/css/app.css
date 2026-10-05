@@ -1,0 +1,264 @@
+:root { --sidebar-width: 250px; --sidebar-bg: #172033; --accent: #2563eb; }
+body { background: #f4f6f9; color: #1f2937; font-family: Arial, sans-serif; }
+.login-page { min-height: 100vh; display: grid; place-items: center; background: linear-gradient(135deg,#eef4ff,#f7f9fc); }
+.login-card { width: min(420px, calc(100% - 32px)); border: 0; border-radius: 16px; }
+.login-company-logo-panel { display: flex; justify-content: center; padding: 4px 12px; }
+.login-company-logo { display: block; width: min(229px, 100%); height: auto; object-fit: contain; }
+.sidebar { position: fixed; inset: 0 auto 0 0; width: var(--sidebar-width); background: var(--sidebar-bg); color: #fff; padding: 22px 16px; display: flex; flex-direction: column; z-index: 1000; }
+.brand { font-weight: 800; letter-spacing: .5px; font-size: 18px; padding: 8px 10px 22px; }
+.brand span { font-size: 12px; font-weight: 600; opacity: .7; }
+.sidebar .nav-link { color: rgba(255,255,255,.8); border-radius: 10px; padding: 11px 12px; display: flex; gap: 10px; align-items: center; }
+.sidebar .nav-link:hover, .sidebar .nav-link.active { color: #fff; background: rgba(255,255,255,.1); }
+.sidebar-bottom { margin-top: auto; }
+.main-content { margin-left: var(--sidebar-width); padding: 28px; min-height: 100vh; }
+.summary-card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 3px 14px rgba(15,23,42,.06); min-height: 110px; }
+.summary-card .label { color: #6b7280; font-size: 13px; margin-bottom: 6px; }
+.summary-card .value { font-size: 30px; font-weight: 800; }
+@media (max-width: 900px) { :root { --sidebar-width: 74px; } .brand { font-size: 13px; padding-left: 6px; } .brand span { display:none; } .sidebar .nav-link span { display:none; } .sidebar .nav-link { justify-content:center; } }
+/* ============================================================
+   ASSET HISTORY / TIMELINE
+   ============================================================ */
+
+.asset-history-timeline {
+  position: relative;
+  padding: 0.5rem 0 0.5rem 0.5rem;
+}
+
+.asset-history-item {
+  position: relative;
+  display: flex;
+  gap: 1rem;
+  padding-bottom: 1.5rem;
+  padding-left: 0.5rem;
+}
+
+.asset-history-item:last-child {
+  padding-bottom: 0;
+}
+
+.asset-history-line {
+  position: absolute;
+  left: 10px;
+  top: 24px;
+  bottom: -2px;
+  width: 2px;
+  background: #dee2e6;
+}
+
+.asset-history-item:last-child .asset-history-line {
+  display: none;
+}
+
+.asset-history-dot {
+  position: relative;
+  z-index: 2;
+
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+
+  border-radius: 50%;
+
+  background: #0d6efd;
+  color: #ffffff;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 11px;
+  line-height: 1;
+}
+
+.asset-history-content {
+  flex: 1;
+
+  background: #ffffff;
+
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+
+  padding: 0.9rem 1rem;
+
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.asset-history-content:hover {
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.07);
+}
+
+#assetHistoryModal .modal-body {
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+}
+
+#assetHistoryModal .modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+#assetHistoryModal .modal-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+#assetHistoryModal .modal-body::-webkit-scrollbar-thumb {
+  background: #adb5bd;
+  border-radius: 10px;
+}
+
+#assetHistoryModal .modal-body::-webkit-scrollbar-thumb:hover {
+  background: #6c757d;
+}
+
+/* =========================================================
+   ASSET TABLE
+   Keep all columns accessible on smaller screens
+   ========================================================= */
+
+.asset-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
+.asset-table-wrapper table {
+  min-width: 1450px;
+  white-space: nowrap;
+}
+
+.asset-table-wrapper th,
+.asset-table-wrapper td {
+  vertical-align: middle;
+}
+
+/* Keep Action visible while scrolling */
+.asset-table-wrapper th:last-child,
+.asset-table-wrapper td:last-child {
+  position: sticky;
+  right: 0;
+  background: #fff;
+  z-index: 2;
+}
+
+.asset-table-wrapper th:last-child {
+  z-index: 3;
+}
+.nav-icon {
+    width: 24px;
+    min-width: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    line-height: 1;
+}
+/* ============================================================
+   ASSET LIST TABLE
+   ============================================================ */
+
+.asset-table-wrapper {
+    max-height: 65vh;
+    overflow: auto;
+    position: relative;
+}
+
+/* Keep table header visible while scrolling */
+.asset-table-wrapper thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #fff;
+    white-space: nowrap;
+}
+
+/* Prevent columns from becoming too narrow */
+.asset-table-wrapper table {
+    min-width: 1200px;
+}
+
+/* Keep horizontal scrollbar at the bottom of the table area */
+.asset-table-wrapper {
+    scrollbar-width: thin;
+}
+
+/* Chrome / Edge scrollbar */
+.asset-table-wrapper::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.asset-table-wrapper::-webkit-scrollbar-thumb {
+    border-radius: 6px;
+}
+
+.asset-table-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+/* ============================================================
+   REPAIR RECORDS - FIXED HEADER / SCROLLING ROWS
+   ============================================================ */
+
+.repair-records-scroll {
+    max-height: 500px;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+/* Keep table header visible while scrolling */
+.repair-records-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #fff;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Prevent columns from collapsing */
+.repair-records-scroll table {
+    min-width: 1200px;
+}
+
+/* Keep action buttons readable */
+.repair-records-scroll td,
+.repair-records-scroll th {
+    white-space: nowrap;
+}
+
+/* =========================================================
+   ADD ASSET MODAL - FORCE PROPER SCROLLING
+   ========================================================= */
+
+#addAssetModal .modal-dialog {
+  height: calc(100vh - 1rem);
+  max-height: calc(100vh - 1rem);
+}
+
+#addAssetModal .modal-content {
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+#addAssetModal #assetForm {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#addAssetModal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+#addAssetModal .modal-header,
+#addAssetModal .modal-footer {
+  flex-shrink: 0;
+}
+

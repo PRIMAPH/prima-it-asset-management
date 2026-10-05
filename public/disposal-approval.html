@@ -1,0 +1,2361 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Disposal Approval Form - PRIMA IT Asset Management
+  </title>
+
+  <link
+    href="/vendor/bootstrap/bootstrap.min.css"
+    rel="stylesheet"
+  >
+
+  <style>
+
+    /* ============================================================
+       GLOBAL
+    ============================================================ */
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #e9ecef;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #212529;
+    }
+
+
+    /* ============================================================
+       TOOLBAR
+    ============================================================ */
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+
+      background: #172033;
+      padding: 12px 18px;
+
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+
+
+    /* ============================================================
+       A4 PAGE
+    ============================================================ */
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+
+      margin: 20px auto;
+
+      background: #ffffff;
+
+      padding:
+        13mm
+        13mm
+        14mm
+        13mm;
+
+      box-shadow:
+        0 0 12px rgba(0,0,0,.18);
+    }
+
+
+    /* ============================================================
+       COMPANY HEADER
+    ============================================================ */
+
+    .company-name {
+      text-align: center;
+      font-size: 18px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+
+    .company-subtitle {
+      text-align: center;
+      font-size: 12px;
+      color: #555;
+      margin-top: 2px;
+    }
+
+    .form-title {
+      text-align: center;
+      font-size: 22px;
+      font-weight: 800;
+      margin-top: 16px;
+      letter-spacing: .5px;
+    }
+
+    .form-subtitle {
+      text-align: center;
+      font-size: 13px;
+      margin-bottom: 18px;
+      color: #555;
+    }
+
+
+    /* ============================================================
+       COMMON TABLE
+    ============================================================ */
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .info-table td {
+      border: 1px solid #444;
+      padding: 7px 8px;
+      font-size: 12px;
+      vertical-align: top;
+    }
+
+    .info-label {
+      width: 18%;
+      font-weight: 700;
+      background: #f4f4f4;
+    }
+
+    .info-value {
+      width: 32%;
+      min-height: 30px;
+    }
+
+
+    /* ============================================================
+       SECTION TITLE
+    ============================================================ */
+
+    .section-title {
+      background: #172033;
+      color: #ffffff;
+
+      padding: 7px 10px;
+
+      margin-top: 18px;
+      margin-bottom: 0;
+
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .3px;
+    }
+
+
+    /* ============================================================
+       STATUS
+    ============================================================ */
+
+    .status-badge {
+      display: inline-block;
+
+      padding: 4px 9px;
+
+      border-radius: 20px;
+
+      font-size: 11px;
+      font-weight: 700;
+
+      border: 1px solid #555;
+
+      background: #f8f9fa;
+    }
+
+
+    /* ============================================================
+       ASSET BLOCK
+    ============================================================ */
+
+    .asset-block {
+      border:
+        1px solid #444;
+
+      margin-bottom: 14px;
+
+      page-break-inside: avoid;
+    }
+
+    .asset-block-header {
+      background: #e9ecef;
+
+      padding: 7px 9px;
+
+      border-bottom:
+        1px solid #444;
+
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .asset-table td {
+      border:
+        1px solid #777;
+
+      padding:
+        6px 8px;
+
+      font-size:
+        11px;
+
+      vertical-align:
+        top;
+    }
+
+    .asset-table .label {
+      width: 18%;
+      font-weight: 700;
+      background: #f8f9fa;
+    }
+
+    .asset-table .value {
+      width: 32%;
+    }
+
+
+    /* ============================================================
+       REPAIR INFORMATION
+    ============================================================ */
+
+    .repair-box {
+      margin:
+        10px;
+
+      border:
+        1px solid #999;
+
+      background:
+        #fafafa;
+
+      page-break-inside:
+        avoid;
+    }
+
+    .repair-title {
+      font-size:
+        11px;
+
+      font-weight:
+        700;
+
+      padding:
+        6px 8px;
+
+      border-bottom:
+        1px solid #999;
+
+      background:
+        #eeeeee;
+    }
+
+    .repair-content {
+      padding:
+        8px;
+
+      font-size:
+        11px;
+    }
+
+    .repair-row {
+      margin-bottom:
+        5px;
+    }
+
+    .repair-row:last-child {
+      margin-bottom:
+        0;
+    }
+
+    .repair-label {
+      font-weight:
+        700;
+    }
+
+
+    /* ============================================================
+       DISPOSAL ITEM DETAILS
+    ============================================================ */
+
+    .item-disposal-box {
+      margin:
+        10px;
+
+      border:
+        1px solid #777;
+
+      padding:
+        8px;
+
+      font-size:
+        11px;
+    }
+
+    .item-disposal-row {
+      margin-bottom:
+        6px;
+    }
+
+    .item-disposal-row:last-child {
+      margin-bottom:
+        0;
+    }
+
+
+    /* ============================================================
+       TEXT SECTIONS
+    ============================================================ */
+
+    .text-box {
+      border:
+        1px solid #444;
+
+      min-height:
+        70px;
+
+      padding:
+        9px;
+
+      font-size:
+        12px;
+
+      white-space:
+        pre-wrap;
+    }
+
+
+    /* ============================================================
+       APPROVALS
+    ============================================================ */
+
+    .approval-grid {
+      display:
+        grid;
+
+      grid-template-columns:
+        repeat(3, 1fr);
+
+      gap:
+        10px;
+
+      margin-top:
+        10px;
+    }
+
+    .approval-card {
+      border:
+        1px solid #444;
+
+      min-height:
+        230px;
+
+      padding:
+        10px;
+
+      text-align:
+        center;
+
+      page-break-inside:
+        avoid;
+    }
+
+    .approval-role {
+      font-size:
+        12px;
+
+      font-weight:
+        800;
+
+      text-transform:
+        uppercase;
+
+      padding-bottom:
+        8px;
+
+      border-bottom:
+        1px solid #aaa;
+
+      margin-bottom:
+        12px;
+    }
+
+    .approval-info {
+      font-size:
+        10px;
+
+      text-align:
+        left;
+
+      min-height:
+        75px;
+
+      margin-bottom:
+        12px;
+    }
+
+    .approval-info-row {
+      margin-bottom:
+        5px;
+    }
+
+    .approval-info-label {
+      font-weight:
+        700;
+    }
+
+    .signature-space {
+      height:
+        38px;
+    }
+
+    .signature-line {
+      border-top:
+        1px solid #333;
+
+      padding-top:
+        3px;
+
+      font-size:
+        10px;
+
+      margin-top:
+        5px;
+    }
+
+/* ============================================================
+   APPROVAL PRINTED NAME
+============================================================ */
+
+.printed-name {
+  min-height: 20px;
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+
+/* ============================================================
+   APPROVAL DATE VALUE
+============================================================ */
+
+.approval-date {
+  min-height: 18px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+
+/* ============================================================
+   LABEL BELOW NAME / DATE
+============================================================ */
+
+.approval-field-label {
+  font-size: 9px;
+  color: #555;
+  margin-top: 2px;
+}
+
+
+    /* ============================================================
+       FOOTER
+    ============================================================ */
+
+    .footer-note {
+      margin-top:
+        18px;
+
+      padding-top:
+        8px;
+
+      border-top:
+        1px solid #aaa;
+
+      text-align:
+        center;
+
+      font-size:
+        9px;
+
+      color:
+        #666;
+    }
+
+
+    /* ============================================================
+       ERROR
+    ============================================================ */
+
+    #pageAlert {
+      margin-bottom:
+        15px;
+    }
+
+
+    /* ============================================================
+       PRINT
+    ============================================================ */
+
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+
+    @media print {
+
+      body {
+        background:
+          #ffffff;
+      }
+
+      .toolbar {
+        display:
+          none !important;
+      }
+
+      .page {
+        width:
+          210mm;
+
+        min-height:
+          297mm;
+
+        margin:
+          0;
+
+        padding:
+          12mm;
+
+        box-shadow:
+          none;
+      }
+
+      .section-title {
+        -webkit-print-color-adjust:
+          exact;
+
+        print-color-adjust:
+          exact;
+
+        background:
+          #172033 !important;
+
+        color:
+          white !important;
+      }
+
+      .asset-block-header,
+      .info-label,
+      .asset-table .label,
+      .repair-title {
+        -webkit-print-color-adjust:
+          exact;
+
+        print-color-adjust:
+          exact;
+      }
+
+      .asset-block,
+      .repair-box,
+      .approval-card {
+        break-inside:
+          avoid;
+
+        page-break-inside:
+          avoid;
+      }
+
+    }
+
+  </style>
+
+  <meta name="theme-color" content="#0b1118">
+<link
+  data-dark-theme
+  rel="stylesheet"
+  href="/css/dark-theme.css"
+>
+
+<link
+  data-dark-theme
+  rel="stylesheet"
+  href="/css/dark-components.css"
+>
+  <link rel="stylesheet" href="/css/navigation.css?v=4">
+  <script src="/js/theme.js"></script>
+<script src="/js/alerts.js?v=2"></script>
+</head>
+
+
+<body>
+
+
+  <!-- ============================================================
+       TOOLBAR
+  ============================================================= -->
+
+  <div class="toolbar">
+
+    <button
+      type="button"
+      class="btn btn-light btn-sm"
+      onclick="window.print()"
+    >
+      🖨️ Print Disposal Approval Form
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      onclick="window.close()"
+    >
+      Close
+    </button>
+
+  </div>
+
+
+
+  <!-- ============================================================
+       A4 FORM
+  ============================================================= -->
+
+  <main class="page print-document" data-bs-theme="light">
+
+
+    <!-- ==========================================================
+         ALERT
+    =========================================================== -->
+
+    <div id="pageAlert"></div>
+
+
+
+    <!-- ==========================================================
+         HEADER
+    =========================================================== -->
+
+    <div class="company-name">
+
+      Prima Fintech (Philippines) Lending Corporation
+
+    </div>
+
+
+    <div class="company-subtitle">
+
+      IT Asset Management
+
+    </div>
+
+
+    <div class="form-title">
+
+      DISPOSAL APPROVAL FORM
+
+    </div>
+
+
+    <div class="form-subtitle">
+
+      IT Asset Disposal Request and Approval
+
+    </div>
+
+
+
+    <!-- ==========================================================
+         DISPOSAL INFORMATION
+    =========================================================== -->
+
+    <div class="section-title">
+
+      DISPOSAL INFORMATION
+
+    </div>
+
+
+    <table class="info-table">
+
+      <tr>
+
+        <td class="info-label">
+          Disposal No.
+        </td>
+
+        <td
+          class="info-value"
+          id="disposalNo"
+        >
+          -
+        </td>
+
+
+        <td class="info-label">
+          Status
+        </td>
+
+        <td class="info-value">
+
+          <span
+            id="disposalStatus"
+            class="status-badge"
+          >
+            -
+          </span>
+
+        </td>
+
+      </tr>
+
+
+      <tr>
+
+        <td class="info-label">
+          Date Requested
+        </td>
+
+        <td
+          class="info-value"
+          id="dateRequested"
+        >
+          -
+        </td>
+
+
+        <td class="info-label">
+          Number of Assets
+        </td>
+
+        <td
+          class="info-value"
+          id="assetCount"
+        >
+          0
+        </td>
+
+      </tr>
+
+
+      <tr>
+
+        <td class="info-label">
+          Requested / Prepared By
+        </td>
+
+        <td
+          class="info-value"
+          colspan="3"
+          id="createdByName"
+        >
+          -
+        </td>
+
+      </tr>
+
+    </table>
+
+
+
+    <!-- ==========================================================
+         ASSETS
+    =========================================================== -->
+
+    <div class="section-title">
+
+      ASSET(S) FOR DISPOSAL
+
+    </div>
+
+
+    <div
+      id="assetItems"
+      class="pt-2"
+    >
+
+      <div class="text-muted small">
+
+        Loading asset information...
+
+      </div>
+
+    </div>
+
+
+
+    <!-- ==========================================================
+         REASON
+    =========================================================== -->
+
+    <div class="section-title">
+
+      REASON FOR DISPOSAL
+
+    </div>
+
+
+    <div
+      id="reason"
+      class="text-box"
+    >
+      -
+    </div>
+
+
+
+    <!-- ==========================================================
+         RECOMMENDATION
+    =========================================================== -->
+
+    <div class="section-title">
+
+      IT RECOMMENDATION
+
+    </div>
+
+
+    <div
+      id="recommendation"
+      class="text-box"
+    >
+      -
+    </div>
+
+
+
+    <!-- ==========================================================
+         DISPOSAL METHOD
+    =========================================================== -->
+
+    <div class="section-title">
+
+      PROPOSED / APPROVED DISPOSAL METHOD
+
+    </div>
+
+
+    <div
+      id="disposalMethod"
+      class="text-box"
+      style="min-height: 50px;"
+    >
+      -
+    </div>
+
+
+
+    <!-- ==========================================================
+         APPROVAL SECTION
+    =========================================================== -->
+
+    <div class="section-title">
+
+      APPROVAL
+
+    </div>
+
+
+    <div class="approval-grid">
+
+
+      <!-- ========================================================
+           IT DEPARTMENT
+      ========================================================= -->
+
+      <div class="approval-card">
+
+        <div class="approval-role">
+
+          IT DEPARTMENT
+
+        </div>
+
+
+        <div class="approval-info">
+
+          <div class="approval-info-row">
+
+            <span class="approval-info-label">
+              Prepared By:
+            </span>
+
+            <span id="itPreparedBy">
+              -
+            </span>
+
+          </div>
+
+
+          <div class="approval-info-row">
+
+            <span class="approval-info-label">
+              Date:
+            </span>
+
+            <span id="itPreparedDate">
+              -
+            </span>
+
+          </div>
+
+
+          <div class="approval-info-row">
+
+            <span class="approval-info-label">
+              Remarks:
+            </span>
+
+            <span id="itRemarks">
+              -
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="signature-space"></div>
+
+
+        <div class="signature-line">
+
+          Signature
+
+        </div>
+
+
+        <div
+  class="printed-name"
+  id="itPrintedName"
+>
+  -
+</div>
+
+<div class="approval-field-label">
+  Printed Name
+</div>
+
+<div
+  class="approval-date"
+  id="itDate"
+>
+  -
+</div>
+
+<div class="approval-field-label">
+  Date
+</div>
+
+      </div>
+
+
+
+      <!-- ========================================================
+           ACCOUNTING
+      ========================================================= -->
+
+      <div class="approval-card">
+
+        <div class="approval-role">
+
+          ACCOUNTING HEAD
+
+        </div>
+
+
+        <div class="approval-info">
+
+          <div class="approval-info-row">
+
+            <span class="approval-info-label">
+              Approval:
+            </span>
+
+            <span id="accountingApprovalStatus">
+              Pending
+            </span>
+
+          </div>
+
+
+          <div class="approval-info-row">
+
+            <span class="approval-info-label">
+              Recorded By:
+            </span>
+
+            <span id="accountingRecordedName">
+              -
+            </span>
+
+          </div>
+
+
+          <div class="approval-info-row">
+
+            <span class="approval-info-label">
+              Date:
+            </span>
+
+            <span id="accountingRecordedDate">
+              -
+            </span>
+
+          </div>
+
+
+          <div class="approval-info-row">
+
+            <span class="approval-info-label">
+              Remarks:
+            </span>
+
+            <span id="accountingRemarks">
+              -
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="signature-space"></div>
+
+
+        <div class="signature-line">
+
+          Signature
+
+        </div>
+
+
+        <div
+  class="printed-name"
+  id="accountingPrintedName"
+>
+  -
+</div>
+
+<div class="approval-field-label">
+  Printed Name
+</div>
+
+<div
+  class="approval-date"
+  id="accountingDate"
+>
+  -
+</div>
+
+<div class="approval-field-label">
+  Date
+</div>
+
+      </div>
+
+
+
+      <!-- ========================================================
+           PRESIDENT
+      ========================================================= -->
+
+      <div class="approval-card">
+
+        <div class="approval-role">
+
+          PRESIDENT
+
+        </div>
+
+
+        <div class="approval-info">
+
+          <div class="approval-info-row">
+
+            <span class="approval-info-label">
+              Approval:
+            </span>
+
+            <span id="presidentApprovalStatus">
+              Pending
+            </span>
+
+          </div>
+
+
+          <div class="approval-info-row">
+
+            <span class="approval-info-label">
+              Recorded By:
+            </span>
+
+            <span id="presidentRecordedName">
+              -
+            </span>
+
+          </div>
+
+
+          <div class="approval-info-row">
+
+            <span class="approval-info-label">
+              Date:
+            </span>
+
+            <span id="presidentRecordedDate">
+              -
+            </span>
+
+          </div>
+
+
+          <div class="approval-info-row">
+
+            <span class="approval-info-label">
+              Remarks:
+            </span>
+
+            <span id="presidentRemarks">
+              -
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="signature-space"></div>
+
+
+        <div class="signature-line">
+
+          Signature
+
+        </div>
+
+
+<div
+  class="printed-name"
+  id="presidentPrintedName"
+>
+  -
+</div>
+
+<div class="approval-field-label">
+  Printed Name
+</div>
+
+<div
+  class="approval-date"
+  id="presidentDate"
+>
+  -
+</div>
+
+<div class="approval-field-label">
+  Date
+</div>
+
+      </div>
+
+
+    </div>
+
+
+
+    <!-- ==========================================================
+         GENERAL REMARKS
+    =========================================================== -->
+
+    <div class="section-title">
+
+      REMARKS
+
+    </div>
+
+
+    <div
+      id="remarks"
+      class="text-box"
+    >
+      -
+    </div>
+
+
+
+    <!-- ==========================================================
+         FOOTER
+    =========================================================== -->
+
+    <div class="footer-note">
+
+      This document is generated by the PRIMA IT Asset Management
+      System. Disposal of company assets must be properly documented
+      and approved before final disposition.
+
+    </div>
+
+
+  </main>
+
+
+
+  <script>
+
+    // ============================================================
+    // GET DISPOSAL ID
+    // ============================================================
+
+    function getId() {
+
+      const params =
+        new URLSearchParams(
+          window.location.search
+        );
+
+      return params.get('id');
+
+    }
+
+
+
+    // ============================================================
+    // SAFE TEXT
+    // ============================================================
+
+    function safe(value) {
+
+      if (
+        value === null ||
+        value === undefined ||
+        value === ''
+      ) {
+
+        return '-';
+
+      }
+
+      return String(value);
+
+    }
+
+
+
+    // ============================================================
+    // HTML ESCAPE
+    // ============================================================
+
+    function escapeHtml(value) {
+
+      return String(value ?? '')
+        .replaceAll(
+          '&',
+          '&amp;'
+        )
+        .replaceAll(
+          '<',
+          '&lt;'
+        )
+        .replaceAll(
+          '>',
+          '&gt;'
+        )
+        .replaceAll(
+          '"',
+          '&quot;'
+        )
+        .replaceAll(
+          "'",
+          '&#039;'
+        );
+
+    }
+
+
+
+    // ============================================================
+    // SET TEXT
+    // ============================================================
+
+    function setText(
+      id,
+      value
+    ) {
+
+      const element =
+        document.getElementById(id);
+
+      if (!element) return;
+
+
+      element.textContent =
+        (
+          value === null ||
+          value === undefined ||
+          value === ''
+        )
+          ? '-'
+          : value;
+
+    }
+
+
+
+    // ============================================================
+    // FORMAT DATE
+    // ============================================================
+
+    function formatDate(value) {
+
+      if (!value) {
+
+        return '-';
+
+      }
+
+
+      const date =
+        new Date(value);
+
+
+      if (
+        Number.isNaN(
+          date.getTime()
+        )
+      ) {
+
+        return value;
+
+      }
+
+
+      return date.toLocaleDateString(
+        'en-PH',
+        {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }
+      );
+
+    }
+
+
+
+    // ============================================================
+    // FORMAT DATE TIME
+    // ============================================================
+
+    function formatDateTime(value) {
+
+      if (!value) {
+
+        return '-';
+
+      }
+
+
+      const date =
+        new Date(value);
+
+
+      if (
+        Number.isNaN(
+          date.getTime()
+        )
+      ) {
+
+        return value;
+
+      }
+
+
+      return date.toLocaleString(
+        'en-PH',
+        {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        }
+      );
+
+    }
+
+
+
+    // ============================================================
+    // MONEY
+    // ============================================================
+
+    function money(value) {
+
+      const number =
+        Number(value || 0);
+
+
+      return number.toLocaleString(
+        'en-PH',
+        {
+          style: 'currency',
+          currency: 'PHP',
+          minimumFractionDigits: 2
+        }
+      );
+
+    }
+
+
+
+    // ============================================================
+    // SHOW ERROR
+    // ============================================================
+
+    function showPageAlert(
+      message,
+      type = 'danger'
+    ) {
+
+      const box =
+        document.getElementById(
+          'pageAlert'
+        );
+
+
+      if (!box) return;
+
+
+      if (!message) {
+
+        box.innerHTML = '';
+
+        return;
+
+      }
+
+
+      box.innerHTML = `
+        <div class="alert alert-${type}">
+          ${escapeHtml(message)}
+        </div>
+      `;
+
+    }
+
+
+
+    // ============================================================
+    // FORMAT STATUS
+    // ============================================================
+
+    function formatStatus(status) {
+
+      if (!status) {
+
+        return '-';
+
+      }
+
+
+      return String(status)
+        .replaceAll('_', ' ')
+        .replace(/\b\w/g, char =>
+          char.toUpperCase()
+        );
+
+    }
+
+
+
+    // ============================================================
+    // CREATE ASSET BLOCK
+    // ============================================================
+
+    function createAssetBlock(
+      item,
+      index
+    ) {
+
+      const block =
+        document.createElement(
+          'div'
+        );
+
+
+      block.className =
+        'asset-block';
+
+
+      const brandModel =
+        [
+          item.brand,
+          item.model
+        ]
+          .filter(Boolean)
+          .join(' / ') ||
+        '-';
+
+
+      const custodian =
+        item.custodian_name
+          ? (
+              item.custodian_employee_id
+                ? `${item.custodian_name} (${item.custodian_employee_id})`
+                : item.custodian_name
+            )
+          : '-';
+
+
+      const condition =
+        item.condition_status ||
+        item.asset_condition ||
+        '-';
+
+
+      const category =
+        item.category_name ||
+        item.category ||
+        '-';
+
+
+      const location =
+        item.location_name ||
+        item.location ||
+        '-';
+
+
+
+      // ==========================================================
+      // REPAIR DETAILS
+      // ==========================================================
+
+      let repairHtml = '';
+
+
+      if (
+        item.repair_id ||
+        item.repair_no
+      ) {
+
+        repairHtml = `
+
+          <div class="repair-box">
+
+            <div class="repair-title">
+
+              Related Repair Information
+
+            </div>
+
+
+            <div class="repair-content">
+
+              <div class="repair-row">
+
+                <span class="repair-label">
+                  Repair No.:
+                </span>
+
+                ${escapeHtml(
+                  safe(item.repair_no)
+                )}
+
+              </div>
+
+
+              <div class="repair-row">
+
+                <span class="repair-label">
+                  Priority:
+                </span>
+
+                ${escapeHtml(
+                  safe(item.priority)
+                )}
+
+              </div>
+
+
+              <div class="repair-row">
+
+                <span class="repair-label">
+                  Problem:
+                </span>
+
+                ${escapeHtml(
+                  safe(
+                    item.problem_description
+                  )
+                )}
+
+              </div>
+
+
+              <div class="repair-row">
+
+                <span class="repair-label">
+                  Initial Condition:
+                </span>
+
+                ${escapeHtml(
+                  safe(
+                    item.initial_condition
+                  )
+                )}
+
+              </div>
+
+
+              <div class="repair-row">
+
+                <span class="repair-label">
+                  Diagnosis:
+                </span>
+
+                ${escapeHtml(
+                  safe(item.diagnosis)
+                )}
+
+              </div>
+
+
+              <div class="repair-row">
+
+                <span class="repair-label">
+                  Repair Action:
+                </span>
+
+                ${escapeHtml(
+                  safe(
+                    item.repair_action
+                  )
+                )}
+
+              </div>
+
+
+              ${
+                item.parts_replaced
+                  ? `
+                    <div class="repair-row">
+
+                      <span class="repair-label">
+                        Parts Replaced:
+                      </span>
+
+                      ${escapeHtml(
+                        item.parts_replaced
+                      )}
+
+                    </div>
+                  `
+                  : ''
+              }
+
+
+              ${
+                Number(item.total_cost || 0) > 0
+                  ? `
+                    <div class="repair-row">
+
+                      <span class="repair-label">
+                        Repair Cost:
+                      </span>
+
+                      ${escapeHtml(
+                        money(
+                          item.total_cost
+                        )
+                      )}
+
+                    </div>
+                  `
+                  : ''
+              }
+
+
+              ${
+                item.vendor
+                  ? `
+                    <div class="repair-row">
+
+                      <span class="repair-label">
+                        Vendor:
+                      </span>
+
+                      ${escapeHtml(
+                        item.vendor
+                      )}
+
+                    </div>
+                  `
+                  : ''
+              }
+
+            </div>
+
+          </div>
+
+        `;
+
+      }
+
+
+
+      // ==========================================================
+      // ITEM-SPECIFIC DISPOSAL INFO
+      // ==========================================================
+
+      let itemDisposalHtml = '';
+
+
+      if (
+        item.item_reason ||
+        item.item_remarks
+      ) {
+
+        itemDisposalHtml = `
+
+          <div class="item-disposal-box">
+
+            ${
+              item.item_reason
+                ? `
+                  <div class="item-disposal-row">
+
+                    <strong>
+                      Item Reason:
+                    </strong>
+
+                    ${escapeHtml(
+                      item.item_reason
+                    )}
+
+                  </div>
+                `
+                : ''
+            }
+
+
+            ${
+              item.item_remarks
+                ? `
+                  <div class="item-disposal-row">
+
+                    <strong>
+                      Item Remarks:
+                    </strong>
+
+                    ${escapeHtml(
+                      item.item_remarks
+                    )}
+
+                  </div>
+                `
+                : ''
+            }
+
+          </div>
+
+        `;
+
+      }
+
+
+
+      block.innerHTML = `
+
+        <div class="asset-block-header">
+
+          Asset ${index + 1}
+
+        </div>
+
+
+        <table class="asset-table">
+
+          <tr>
+
+            <td class="label">
+              Asset Tag
+            </td>
+
+            <td class="value">
+              ${escapeHtml(
+                safe(item.asset_tag)
+              )}
+            </td>
+
+
+            <td class="label">
+              Barcode
+            </td>
+
+            <td class="value">
+              ${escapeHtml(
+                safe(item.barcode)
+              )}
+            </td>
+
+          </tr>
+
+
+          <tr>
+
+            <td class="label">
+              Asset Name
+            </td>
+
+            <td class="value">
+              ${escapeHtml(
+                safe(item.asset_name)
+              )}
+            </td>
+
+
+            <td class="label">
+              Category
+            </td>
+
+            <td class="value">
+              ${escapeHtml(
+                category
+              )}
+            </td>
+
+          </tr>
+
+
+          <tr>
+
+            <td class="label">
+              Brand / Model
+            </td>
+
+            <td class="value">
+              ${escapeHtml(
+                brandModel
+              )}
+            </td>
+
+
+            <td class="label">
+              Serial Number
+            </td>
+
+            <td class="value">
+              ${escapeHtml(
+                safe(
+                  item.serial_number
+                )
+              )}
+            </td>
+
+          </tr>
+
+
+          <tr>
+
+            <td class="label">
+              Condition
+            </td>
+
+            <td class="value">
+              ${escapeHtml(
+                condition
+              )}
+            </td>
+
+
+            <td class="label">
+              Location
+            </td>
+
+            <td class="value">
+              ${escapeHtml(
+                location
+              )}
+            </td>
+
+          </tr>
+
+
+          <tr>
+
+            <td class="label">
+              Previous Custodian
+            </td>
+
+            <td class="value">
+              ${escapeHtml(
+                custodian
+              )}
+            </td>
+
+
+            <td class="label">
+              Department
+            </td>
+
+            <td class="value">
+              ${escapeHtml(
+                safe(
+                  item.department_name
+                )
+              )}
+            </td>
+
+          </tr>
+
+
+          <tr>
+
+            <td class="label">
+              Asset Status
+            </td>
+
+            <td
+              class="value"
+              colspan="3"
+            >
+              ${escapeHtml(
+                formatStatus(
+                  item.asset_status
+                )
+              )}
+            </td>
+
+          </tr>
+
+        </table>
+
+
+        ${repairHtml}
+
+        ${itemDisposalHtml}
+
+      `;
+
+
+      return block;
+
+    }
+
+
+
+    // ============================================================
+    // LOAD DISPOSAL FORM
+    // ============================================================
+
+    async function loadApprovalForm() {
+
+      const id =
+        getId();
+
+
+      if (!id) {
+
+        showPageAlert(
+          'Missing disposal ID.'
+        );
+
+        return;
+
+      }
+
+
+      try {
+
+        showPageAlert('');
+
+
+        const response =
+          await fetch(
+            `/api/disposals/${id}/approval-form`,
+            {
+              credentials:
+                'include',
+
+              headers: {
+                'Accept':
+                  'application/json'
+              }
+            }
+          );
+
+
+        let data = {};
+
+
+        try {
+
+          data =
+            await response.json();
+
+        } catch {
+
+          data = {};
+
+        }
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            data.message ||
+            'Unable to load disposal approval form.'
+          );
+
+        }
+
+
+
+        const d =
+          data.disposal || {};
+
+
+        const items =
+          Array.isArray(data.items)
+            ? data.items
+            : [];
+
+
+
+        // ========================================================
+        // HEADER
+        // ========================================================
+
+        setText(
+          'disposalNo',
+          d.disposal_no
+        );
+
+
+        setText(
+          'disposalStatus',
+          formatStatus(
+            d.status
+          )
+        );
+
+
+        setText(
+          'dateRequested',
+          formatDate(
+            d.created_at
+          )
+        );
+
+
+        setText(
+          'assetCount',
+          items.length
+        );
+
+
+        setText(
+          'createdByName',
+          d.created_by_name
+        );
+
+
+
+        // ========================================================
+        // ASSET ITEMS
+        // ========================================================
+
+        const assetItems =
+          document.getElementById(
+            'assetItems'
+          );
+
+
+        assetItems.innerHTML = '';
+
+
+        if (!items.length) {
+
+          assetItems.innerHTML = `
+
+            <div class="alert alert-warning">
+
+              No disposal asset item was found.
+
+            </div>
+
+          `;
+
+        } else {
+
+          items.forEach(
+            (
+              item,
+              index
+            ) => {
+
+              assetItems.appendChild(
+                createAssetBlock(
+                  item,
+                  index
+                )
+              );
+
+            }
+          );
+
+        }
+
+
+
+        // ========================================================
+        // DISPOSAL INFORMATION
+        // ========================================================
+
+        setText(
+          'reason',
+          d.reason
+        );
+
+
+        setText(
+          'recommendation',
+          d.recommendation
+        );
+
+
+        setText(
+          'disposalMethod',
+          d.disposal_method
+        );
+
+
+
+        // ========================================================
+        // IT DEPARTMENT
+        // ========================================================
+
+        setText(
+          'itPreparedBy',
+          d.created_by_name
+        );
+
+
+        setText(
+          'itPreparedDate',
+          formatDate(
+            d.created_at
+          )
+        );
+
+
+        setText(
+          'itRemarks',
+          d.it_remarks
+        );
+
+
+        setText(
+          'itPrintedName',
+          d.created_by_name
+        );
+
+
+        setText(
+          'itDate',
+          formatDate(
+            d.created_at
+          )
+        );
+
+
+
+        // ========================================================
+        // ACCOUNTING HEAD
+        // ========================================================
+
+        const accountingApproved =
+          Boolean(
+            d.accounting_approved_name ||
+            d.accounting_approved_by ||
+            d.accounting_approved_at
+          );
+
+
+        setText(
+          'accountingApprovalStatus',
+          accountingApproved
+            ? 'Approved / Recorded'
+            : 'Pending'
+        );
+
+
+        setText(
+          'accountingRecordedName',
+          d.accounting_approved_name
+        );
+
+
+        setText(
+          'accountingRecordedDate',
+          formatDateTime(
+            d.accounting_approved_at
+          )
+        );
+
+
+        setText(
+          'accountingRemarks',
+          d.accounting_remarks
+        );
+
+
+        setText(
+          'accountingPrintedName',
+          d.accounting_approved_name
+        );
+
+
+        setText(
+          'accountingDate',
+          formatDate(
+            d.accounting_approved_at
+          )
+        );
+
+
+
+        // ========================================================
+        // PRESIDENT
+        // ========================================================
+
+        const presidentApproved =
+          Boolean(
+            d.president_approved_name ||
+            d.president_approved_by ||
+            d.president_approved_at
+          );
+
+
+        setText(
+          'presidentApprovalStatus',
+          presidentApproved
+            ? 'Approved / Recorded'
+            : 'Pending'
+        );
+
+
+        setText(
+          'presidentRecordedName',
+          d.president_approved_name
+        );
+
+
+        setText(
+          'presidentRecordedDate',
+          formatDateTime(
+            d.president_approved_at
+          )
+        );
+
+
+        setText(
+          'presidentRemarks',
+          d.president_remarks
+        );
+
+
+        setText(
+          'presidentPrintedName',
+          d.president_approved_name
+        );
+
+
+        setText(
+          'presidentDate',
+          formatDate(
+            d.president_approved_at
+          )
+        );
+
+
+
+        // ========================================================
+        // GENERAL REMARKS
+        // ========================================================
+
+        const remarks = [
+
+          d.it_remarks
+            ? `IT: ${d.it_remarks}`
+            : null,
+
+          d.accounting_remarks
+            ? `Accounting: ${d.accounting_remarks}`
+            : null,
+
+          d.president_remarks
+            ? `President: ${d.president_remarks}`
+            : null
+
+        ]
+          .filter(Boolean)
+          .join('\n\n');
+
+
+        setText(
+          'remarks',
+          remarks || '-'
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          'LOAD DISPOSAL FORM ERROR:',
+          error
+        );
+
+
+        showPageAlert(
+          error.message ||
+          'Unable to load disposal approval form.'
+        );
+
+      }
+
+    }
+
+
+
+    // ============================================================
+    // LOAD PAGE
+    // ============================================================
+
+    loadApprovalForm();
+
+  </script>
+
+
+</body>
+
+</html>

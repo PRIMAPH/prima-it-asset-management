@@ -1,0 +1,617 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+
+  <meta charset="utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  >
+
+  <title>PRIMA IT Asset Management</title>
+
+
+  <!-- ==========================================================
+       BOOTSTRAP
+       ========================================================== -->
+
+  <link
+    href="/vendor/bootstrap/bootstrap.min.css"
+    rel="stylesheet"
+  >
+
+
+  <!-- ==========================================================
+       BOOTSTRAP ICONS
+       ========================================================== -->
+
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+  >
+
+
+  <!-- ==========================================================
+       APPLICATION CSS
+       ========================================================== -->
+
+  <link
+    rel="stylesheet"
+    href="/css/app.css"
+  >
+
+
+  <!-- ==========================================================
+       CHART.JS
+       ========================================================== -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"
+  ></script>
+
+
+  <!-- ==========================================================
+       DASHBOARD ANALYTICS CSS
+       ========================================================== -->
+
+  <link
+    rel="stylesheet"
+    href="/css/dashboard-analytics.css"
+  >
+
+  <meta name="theme-color" content="#0b1118">
+<link
+  data-dark-theme
+  rel="stylesheet"
+  href="/css/dark-theme.css"
+>
+
+<link
+  data-dark-theme
+  rel="stylesheet"
+  href="/css/dark-components.css"
+>
+  <link rel="stylesheet" href="/css/navigation.css?v=4">
+  <script src="/js/theme.js"></script>
+<script src="/js/alerts.js?v=2"></script>
+</head>
+
+
+<body>
+
+
+  <!-- ==========================================================
+       UNIVERSAL SIDEBAR
+       ========================================================== -->
+
+  <div id="sidebar"></div>
+
+
+  <!-- ==========================================================
+       MAIN CONTENT
+       ========================================================== -->
+
+  <main class="main-content">
+
+
+    <!-- ========================================================
+         HEADER
+         ======================================================== -->
+
+    <div
+      class="d-flex justify-content-between align-items-center mb-4"
+    >
+
+      <div>
+
+        <div class="page-eyebrow">Workspace overview</div>
+        <h1 class="mb-2">Asset dashboard</h1>
+        <p class="text-muted mb-0">
+          Your inventory, assignments, and maintenance at a glance
+        </p>
+
+      </div>
+
+
+      <span class="badge text-bg-light border px-3 py-2 company-badge">
+
+        Prima Fintech (Philippines) Lending Corporation
+
+      </span>
+
+    </div>
+
+
+    <!-- ========================================================
+         SUMMARY CARDS
+         ======================================================== -->
+
+    <div class="row g-3 mb-4 dashboard-summary">
+
+
+      <!-- TOTAL -->
+
+      <div class="col-md-6 col-xl-2">
+
+        <div class="summary-card">
+
+          <div class="label">
+            Total Assets
+          </div>
+
+          <div
+            id="totalAssets"
+            class="value"
+          >
+            0
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- AVAILABLE -->
+
+      <div class="col-md-6 col-xl-2">
+
+        <div class="summary-card">
+
+          <div class="label">
+            Available
+          </div>
+
+          <div
+            id="availableAssets"
+            class="value"
+          >
+            0
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- ASSIGNED -->
+
+      <div class="col-md-6 col-xl-2">
+
+        <div class="summary-card">
+
+          <div class="label">
+            Assigned
+          </div>
+
+          <div
+            id="assignedAssets"
+            class="value"
+          >
+            0
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- FOR REPAIR -->
+
+      <div class="col-md-6 col-xl-2">
+
+        <div class="summary-card">
+
+          <div class="label">
+            For Repair
+          </div>
+
+          <div
+            id="repairAssets"
+            class="value"
+          >
+            0
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- FOR DISPOSAL -->
+
+      <div class="col-md-6 col-xl-2">
+
+        <div class="summary-card">
+
+          <div class="label">
+            For Disposal
+          </div>
+
+          <div
+            id="disposalAssets"
+            class="value"
+          >
+            0
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- ========================================================
+         MANAGEMENT ANALYTICS
+         ======================================================== -->
+
+    <section
+      id="dashboardAnalytics"
+      class="dashboard-analytics-section"
+    >
+
+
+      <!-- ANALYTICS HEADER -->
+
+      <div class="analytics-header">
+
+        <div>
+
+          <h2 class="analytics-title">
+            Management Analytics
+          </h2>
+
+          <p class="analytics-subtitle">
+            Inventory, asset distribution, and maintenance overview
+          </p>
+
+        </div>
+
+
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm"
+          id="refreshAnalyticsBtn"
+        >
+          ↻ Refresh Analytics
+        </button>
+
+      </div>
+
+
+      <!-- ANALYTICS ALERT -->
+
+      <div
+        id="analyticsAlert"
+        class="alert d-none"
+        role="alert"
+      ></div>
+
+
+      <!-- ======================================================
+           TOP ANALYTICS
+           ====================================================== -->
+
+      <div class="analytics-grid analytics-grid-top">
+
+
+        <!-- ASSET STATUS -->
+
+        <div class="analytics-card analytics-card-wide">
+
+          <div class="analytics-card-head">
+
+            <div>
+
+              <div class="analytics-card-title">
+                Asset Status
+              </div>
+
+              <div class="analytics-card-subtitle">
+                Current inventory distribution
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div class="chart-wrap chart-wrap-doughnut">
+
+            <canvas id="assetStatusChart"></canvas>
+
+            <div
+              id="assetStatusEmpty"
+              class="chart-empty d-none"
+            >
+              No asset data available.
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- INVENTORY VALUE -->
+
+        <div class="analytics-card">
+
+          <div class="analytics-card-head">
+
+            <div>
+
+              <div class="analytics-card-title">
+                Inventory Value
+              </div>
+
+              <div class="analytics-card-subtitle">
+                Purchase cost by asset status
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div
+            class="inventory-value-total"
+            id="inventoryValueTotal"
+          >
+            ₱0.00
+          </div>
+
+
+          <div
+            class="value-list"
+            id="inventoryValueList"
+          ></div>
+
+        </div>
+
+      </div>
+
+
+      <!-- ======================================================
+           CATEGORY / DEPARTMENT
+           ====================================================== -->
+
+      <div class="analytics-grid analytics-grid-two">
+
+
+        <!-- CATEGORY -->
+
+        <div class="analytics-card">
+
+          <div class="analytics-card-head">
+
+            <div>
+
+              <div class="analytics-card-title">
+                Assets by Category
+              </div>
+
+              <div class="analytics-card-subtitle">
+                Number of assets in each category
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div class="chart-wrap chart-wrap-bar">
+
+            <canvas id="assetCategoryChart"></canvas>
+
+            <div
+              id="assetCategoryEmpty"
+              class="chart-empty d-none"
+            >
+              No category data available.
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- DEPARTMENT -->
+
+        <div class="analytics-card">
+
+          <div class="analytics-card-head">
+
+            <div>
+
+              <div class="analytics-card-title">
+                Assets by Department
+              </div>
+
+              <div class="analytics-card-subtitle">
+                Current custodian department
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div class="chart-wrap chart-wrap-bar">
+
+            <canvas id="assetDepartmentChart"></canvas>
+
+            <div
+              id="assetDepartmentEmpty"
+              class="chart-empty d-none"
+            >
+              No department data available.
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- ======================================================
+           REPAIR ANALYTICS
+           ====================================================== -->
+
+      <div class="analytics-grid analytics-grid-two">
+
+
+        <!-- REPAIR RECORDS -->
+
+        <div class="analytics-card">
+
+          <div class="analytics-card-head">
+
+            <div>
+
+              <div class="analytics-card-title">
+                Repair Records
+              </div>
+
+              <div class="analytics-card-subtitle">
+                Current repair records by status
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div class="chart-wrap chart-wrap-line">
+
+            <canvas id="repairTrendChart"></canvas>
+
+            <div
+              id="repairTrendEmpty"
+              class="chart-empty d-none"
+            >
+              No repair history available.
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- REPAIR COST -->
+
+        <div class="analytics-card">
+
+          <div class="analytics-card-head">
+
+            <div>
+
+              <div class="analytics-card-title">
+                Repair Cost
+              </div>
+
+              <div class="analytics-card-subtitle">
+                Repair cost by repair status
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <div class="chart-wrap chart-wrap-line">
+
+            <canvas id="repairCostChart"></canvas>
+
+            <div
+              id="repairCostEmpty"
+              class="chart-empty d-none"
+            >
+              No repair cost data available.
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- ======================================================
+           LOCATION
+           ====================================================== -->
+
+      <div class="analytics-card analytics-card-full">
+
+        <div class="analytics-card-head">
+
+          <div>
+
+            <div class="analytics-card-title">
+              Assets by Location
+            </div>
+
+            <div class="analytics-card-subtitle">
+              Current inventory location
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="chart-wrap chart-wrap-bar-wide">
+
+          <canvas id="assetLocationChart"></canvas>
+
+          <div
+            id="assetLocationEmpty"
+            class="chart-empty d-none"
+          >
+            No location data available.
+          </div>
+
+        </div>
+
+      </div>
+
+
+    </section>
+
+
+  </main>
+
+
+  <!-- ==========================================================
+       JAVASCRIPT
+       ========================================================== -->
+
+ <!-- Bootstrap -->
+<script
+  src="/vendor/bootstrap/bootstrap.bundle.min.js"
+></script>
+
+<!-- QR / BARCODE SCANNER -->
+<script
+  src="https://unpkg.com/html5-qrcode"
+  type="text/javascript"
+></script>
+
+<!-- UNIVERSAL NAVBAR -->
+<script src="/js/navbar.js?v=5"></script>
+
+<!-- DASHBOARD -->
+<script src="/js/dashboard.js?v=2"></script>
+
+<!-- DASHBOARD ANALYTICS -->
+<script src="/js/dashboard-analytics.js"></script>
+
+<!-- UNIVERSAL ASSET SCANNER -->
+<script src="/js/asset-scanner.js?v=5"></script>
+
+</body>
+
+</html>

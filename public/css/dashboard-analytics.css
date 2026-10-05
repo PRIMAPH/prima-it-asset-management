@@ -1,0 +1,146 @@
+/* PRIMA IT Asset Management - Management Dashboard Analytics */
+.dashboard-analytics-section {
+  margin-top: 24px;
+  padding-bottom: 32px;
+}
+
+.analytics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.analytics-title {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.analytics-subtitle {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.analytics-grid {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.analytics-grid-top {
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+}
+
+.analytics-grid-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.analytics-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+  padding: 18px;
+  min-width: 0;
+}
+
+.analytics-card-full {
+  margin-bottom: 16px;
+}
+
+.analytics-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.analytics-card-title {
+  font-weight: 700;
+  color: #111827;
+  font-size: 1rem;
+}
+
+.analytics-card-subtitle {
+  color: #6b7280;
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
+.chart-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.chart-wrap-doughnut { height: 300px; }
+.chart-wrap-bar { height: 300px; }
+.chart-wrap-line { height: 300px; }
+.chart-wrap-bar-wide { height: 310px; }
+
+.chart-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.chart-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+.chart-empty.d-none {
+  display: none !important;
+}
+
+.inventory-value-total {
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 12px 0 18px;
+  color: #111827;
+}
+
+.value-list {
+  display: grid;
+  gap: 8px;
+}
+
+.value-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f1f3;
+  font-size: 0.9rem;
+}
+
+.value-row:last-child { border-bottom: 0; }
+.value-label { color: #4b5563; }
+.value-amount { font-weight: 700; color: #111827; white-space: nowrap; }
+
+@media (max-width: 992px) {
+  .analytics-grid-top,
+  .analytics-grid-two {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 576px) {
+  .analytics-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .analytics-card { padding: 14px; }
+  .chart-wrap-doughnut,
+  .chart-wrap-bar,
+  .chart-wrap-line,
+  .chart-wrap-bar-wide { height: 260px; }
+}

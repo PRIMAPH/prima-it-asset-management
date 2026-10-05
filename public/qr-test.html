@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>QR Test - PRIMA IT Asset Management</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 40px;
+            background: #f5f6f8;
+        }
+
+        .card {
+            background: white;
+            max-width: 500px;
+            margin: auto;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.12);
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        .asset-id {
+            font-size: 26px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            margin: 25px 0;
+        }
+
+        .instruction {
+            color: #666;
+            line-height: 1.6;
+        }
+    </style>
+  <meta name="theme-color" content="#0b1118">
+<link
+  data-dark-theme
+  rel="stylesheet"
+  href="/css/dark-theme.css"
+>
+
+<link
+  data-dark-theme
+  rel="stylesheet"
+  href="/css/dark-components.css"
+>
+  <link rel="stylesheet" href="/css/navigation.css?v=4">
+  <script src="/js/theme.js"></script>
+  <script src="/js/alerts.js?v=2"></script>
+</head>
+
+<body>
+
+<div class="card">
+
+    <h1>PRIMA IT Asset Management</h1>
+
+    <p>QR Code Test</p>
+
+    <div class="asset-id">
+        IT-2026-000031
+    </div>
+
+    <div id="qrcode"></div>
+
+    <p class="instruction">
+        📱 Open the Asset Scanner on your iPhone<br>
+        Point the camera at this QR code
+    </p>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+<script>
+    new QRCode(document.getElementById("qrcode"), {
+        text: "IT-2026-000031",
+        width: 300,
+        height: 300,
+        correctLevel: QRCode.CorrectLevel.H
+    });
+</script>
+
+
+</body>
+</html>

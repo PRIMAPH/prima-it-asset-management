@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="en">
+<head>
+
+  <meta charset="utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  >
+
+  <meta
+    id="themeColorMeta"
+    name="theme-color"
+    content="#0b1118"
+  >
+
+  <title>
+    Settings - PRIMA IT Asset Management
+  </title>
+
+
+  <!-- BOOTSTRAP -->
+  <link
+    href="/vendor/bootstrap/bootstrap.min.css"
+    rel="stylesheet"
+  >
+
+  <!-- BOOTSTRAP ICONS (used by the shared navigation) -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+  >
+
+
+  <!-- PRIMA BASE -->
+  <link
+    rel="stylesheet"
+    href="/css/app.css"
+  >
+
+  <link
+    rel="stylesheet"
+    href="/css/settings.css?v=4"
+  >
+
+
+  <!-- DARK THEME FILES -->
+  <link
+    id="darkThemeCss"
+    data-dark-theme
+    rel="stylesheet"
+    href="/css/dark-theme.css"
+  >
+
+  <link
+    id="darkComponentsCss"
+    data-dark-theme
+    rel="stylesheet"
+    href="/css/dark-components.css"
+  >
+
+
+  <!-- NAVIGATION -->
+  <link
+    rel="stylesheet"
+    href="/css/navigation.css?v=4"
+  >
+
+
+  <!-- GLOBAL THEME MANAGER -->
+  <script src="/js/theme.js"></script>
+  <script src="/js/alerts.js?v=2"></script>
+
+</head>
+
+<body class="settings-page">
+  <svg class="settings-icon-library" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="settings-building" viewBox="0 0 24 24"><path d="M4 21V5l8-3 8 3v16M2 21h20M9 21v-5h6v5M8 7h1m6 0h1M8 11h1m6 0h1"/></symbol>
+    <symbol id="settings-sliders" viewBox="0 0 24 24"><path d="M4 7h7m6 0h3M4 17h3m6 0h7"/><circle cx="14" cy="7" r="3"/><circle cx="10" cy="17" r="3"/></symbol>
+    <symbol id="settings-shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+    <symbol id="settings-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 5v2"/></symbol>
+    <symbol id="settings-log" viewBox="0 0 24 24"><path d="M15 3H5v18h14V7l-4-4ZM15 3v5h4M8 12h8m-8 4h5"/></symbol>
+    <symbol id="settings-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+    <symbol id="settings-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+  </svg>
+  <div id="sidebar"></div>
+
+  <main class="main-content">
+    <div class="container-fluid settings-container">
+      <header class="settings-header">
+        <div>
+          <div class="settings-eyebrow">WORKSPACE ADMINISTRATION</div>
+          <h1>Settings</h1>
+          <p>Manage your workspace, access, and system preferences.</p>
+        </div>
+        <button type="button" class="btn btn-outline-secondary settings-back" onclick="goBack()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m5-5-5 5 5 5"/></svg>
+          Back
+        </button>
+      </header>
+
+      <section class="settings-section" aria-labelledby="company-settings-title">
+        <div class="settings-section-heading">
+          <h2 id="company-settings-title">Company &amp; system</h2>
+          <p>The essentials that keep your workspace running.</p>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-6 col-xl-4">
+            <article class="settings-card">
+              <div class="settings-card-heading">
+                <span class="settings-icon company-icon"><svg aria-hidden="true"><use href="#settings-building"/></svg></span>
+                <h3>Company Information</h3>
+              </div>
+              <p>Manage the company information displayed throughout the PRIMA IT Asset Management system.</p>
+              <div class="settings-card-action"><button type="button" class="btn btn-outline-primary btn-sm" disabled>Configure</button></div>
+            </article>
+          </div>
+          <div class="col-md-6 col-xl-4">
+            <article class="settings-card settings-card-featured">
+              <div class="settings-card-heading">
+                <span class="settings-icon system-icon"><svg aria-hidden="true"><use href="#settings-sliders"/></svg></span>
+                <h3>System Settings</h3>
+                <span class="settings-admin-badge">Admin</span>
+              </div>
+              <p>Configure email delivery and schedule automatic asset reports for selected recipients.</p>
+              <div class="settings-card-action">
+                <button
+                  type="button"
+                  id="openReportEmailSettingsBtn"
+                  class="btn btn-outline-primary btn-sm"
+                  data-bs-toggle="modal"
+                  data-bs-target="#reportEmailSettingsModal"
+                >
+                  Configure reports
+                </button>
+              </div>
+            </article>
+          </div>
+          <div class="col-md-6 col-xl-4">
+            <article class="settings-card">
+              <div class="settings-card-heading">
+                <span class="settings-icon security-icon"><svg aria-hidden="true"><use href="#settings-shield"/></svg></span>
+                <h3>Security</h3>
+              </div>
+              <p>Manage password policies, access controls, sessions, and other security settings.</p>
+              <div class="settings-card-action"><button type="button" class="btn btn-outline-primary btn-sm" disabled>Manage</button></div>
+            </article>
+          </div>
+          <div class="col-md-6 col-xl-4">
+
+  <article class="settings-card">
+
+    <div class="settings-card-heading">
+
+      <span
+        class="settings-icon system-icon"
+      >
+
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+
+          <circle
+            cx="12"
+            cy="12"
+            r="4"
+          />
+
+          <path
+            d="
+              M12 2v2
+              M12 20v2
+              M4.93 4.93l1.41 1.41
+              M17.66 17.66l1.41 1.41
+              M2 12h2
+              M20 12h2
+              M4.93 19.07l1.41-1.41
+              M17.66 6.34l1.41-1.41
+            "
+          />
+
+        </svg>
+
+      </span>
+
+
+      <h3>
+        Appearance
+      </h3>
+
+    </div>
+
+
+    <p>
+
+      Choose the appearance of
+      PRIMA IT Asset Management.
+
+    </p>
+
+
+
+    <div class="mb-3">
+
+      <div class="small text-muted mb-2">
+
+        Current theme:
+
+        <strong id="currentThemeText">
+          Dark
+        </strong>
+
+      </div>
+
+
+      <div
+        class="btn-group w-100"
+        role="group"
+        aria-label="Theme selection"
+      >
+
+
+        <!-- LIGHT -->
+
+        <input
+          type="radio"
+          class="btn-check"
+          name="themePreference"
+          id="themeLight"
+          value="light"
+          autocomplete="off"
+        >
+
+        <label
+          class="btn btn-outline-secondary"
+          for="themeLight"
+        >
+
+          ☀ Light
+
+        </label>
+
+
+
+        <!-- DARK -->
+
+        <input
+          type="radio"
+          class="btn-check"
+          name="themePreference"
+          id="themeDark"
+          value="dark"
+          autocomplete="off"
+        >
+
+        <label
+          class="btn btn-outline-secondary"
+          for="themeDark"
+        >
+
+          🌙 Dark
+
+        </label>
+
+
+
+        <!-- SYSTEM -->
+
+        <input
+          type="radio"
+          class="btn-check"
+          name="themePreference"
+          id="themeSystem"
+          value="system"
+          autocomplete="off"
+        >
+
+        <label
+          class="btn btn-outline-secondary"
+          for="themeSystem"
+        >
+
+          ◐ System
+
+        </label>
+
+
+      </div>
+
+    </div>
+
+
+    <div class="small text-muted">
+
+      The selected theme is saved
+      automatically on this device.
+
+    </div>
+
+  </article>
+
+</div>
+        </div>
+
+      </section>
+
+      <section class="settings-section" aria-labelledby="administration-title">
+        <div class="settings-section-heading">
+          <h2 id="administration-title">Administration</h2>
+          <p>Oversee access, review activity, and protect your data.</p>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-6 col-xl-4">
+            <article class="settings-card">
+              <div class="settings-card-heading">
+                <span class="settings-icon users-icon"><svg aria-hidden="true"><use href="#settings-users"/></svg></span>
+                <h3>User Management</h3>
+              </div>
+              <p>Manage system users, account status, roles, and administrator access.</p>
+              <div class="settings-card-action">
+                <button
+                  type="button"
+                  id="openUserManagementBtn"
+                  class="btn btn-outline-primary btn-sm"
+                  data-bs-toggle="modal"
+                  data-bs-target="#userManagementModal"
+                >
+                  Manage users
+                </button>
+              </div>
+            </article>
+          </div>
+          <div class="col-md-6 col-xl-4">
+            <article class="settings-card settings-card-featured">
+              <div class="settings-card-heading">
+                <span class="settings-icon audit-icon"><svg aria-hidden="true"><use href="#settings-log"/></svg></span>
+                <h3>Audit Logs</h3>
+                <span class="settings-admin-badge">Admin</span>
+              </div>
+              <p>View a complete record of administrative and asset-management activities performed in the system.</p>
+              <div class="settings-card-action">
+                <a href="/audit-logs" class="btn btn-primary btn-sm">View audit logs <svg aria-hidden="true"><use href="#settings-arrow"/></svg></a>
+              </div>
+            </article>
+          </div>
+          <div class="col-md-6 col-xl-4">
+            <article class="settings-card settings-card-featured">
+              <div class="settings-card-heading">
+                <span class="settings-icon backup-icon"><svg aria-hidden="true"><use href="#settings-database"/></svg></span>
+                <h3>Backup &amp; Restore</h3>
+                <span class="settings-admin-badge">Admin</span>
+              </div>
+              <p>Export all application data to a secure backup file or restore a compatible PRIMA database backup.</p>
+              <div class="settings-card-action">
+                <button
+                  type="button"
+                  id="openBackupRestoreBtn"
+                  class="btn btn-outline-primary btn-sm"
+                  data-bs-toggle="modal"
+                  data-bs-target="#backupRestoreModal"
+                >
+                  Manage backup
+                </button>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="settings-section" aria-labelledby="system-information-title">
+        <div class="settings-section-heading settings-information-heading">
+          <h2 id="system-information-title">System information</h2>
+          <span class="settings-online-badge"><span aria-hidden="true"></span> System online</span>
+        </div>
+        <div class="settings-info-card">
+          <dl class="settings-info-grid">
+            <div><dt>Application</dt><dd>PRIMA IT Asset Management</dd></div>
+            <div><dt>Company</dt><dd>Prima Fintech (Philippines) Lending Corporation</dd></div>
+            <div><dt>Environment</dt><dd>Local Network</dd></div>
+            <div><dt>Server</dt><dd>Node.js / Express</dd></div>
+            <div><dt>Database</dt><dd>MySQL</dd></div>
+<div>
+
+  <dt>
+    Appearance
+  </dt>
+
+  <dd>
+
+    <span
+      class="settings-theme-swatch"
+      aria-hidden="true"
+    ></span>
+
+    <span id="systemAppearance">
+      Dark
+    </span>
+
+  </dd>
+
+</div>          </dl>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div
+    class="modal fade"
+    id="userManagementModal"
+    tabindex="-1"
+    aria-labelledby="userManagementModalTitle"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h2 class="modal-title fs-5" id="userManagementModalTitle">User management</h2>
+            <div class="small text-muted">Create accounts and review who can access the system.</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <div id="userManagementAlert" role="status" aria-live="polite"></div>
+
+          <div class="row g-4">
+            <div class="col-lg-5">
+              <section class="settings-user-panel" aria-labelledby="addUserTitle">
+                <h3 id="addUserTitle">Add user</h3>
+                <p class="small text-muted">Create a sign-in account. Employee ID is optional but must already exist when provided.</p>
+
+                <form id="addUserForm" autocomplete="off">
+                  <div class="mb-3">
+                    <label for="newUserFullName" class="form-label">Full name</label>
+                    <input id="newUserFullName" name="full_name" class="form-control" maxlength="150" required autocomplete="name">
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-sm-6">
+                      <label for="newUserUsername" class="form-label">Username</label>
+                      <input id="newUserUsername" name="username" class="form-control" minlength="3" maxlength="50" pattern="[A-Za-z0-9._-]+" required autocomplete="username">
+                    </div>
+                    <div class="col-sm-6">
+                      <label for="newUserEmployeeId" class="form-label">Employee ID <span class="text-muted">(optional)</span></label>
+                      <input id="newUserEmployeeId" name="employee_id" class="form-control" maxlength="50">
+                    </div>
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-sm-6">
+                      <label for="newUserRole" class="form-label">Role</label>
+                      <select id="newUserRole" name="role" class="form-select" required>
+                        <option value="viewer">Viewer</option>
+                        <option value="it_staff">IT staff</option>
+                        <option value="admin">Administrator</option>
+                      </select>
+                    </div>
+                    <div class="col-sm-6">
+                      <label for="newUserStatus" class="form-label">Status</label>
+                      <select id="newUserStatus" name="status" class="form-select" required>
+                        <option value="active">Active</option>
+                        <option value="pending">Pending</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-sm-6">
+                      <label for="newUserPassword" class="form-label">Temporary password</label>
+                      <input id="newUserPassword" name="password" type="password" class="form-control" minlength="8" maxlength="72" required autocomplete="new-password">
+                    </div>
+                    <div class="col-sm-6">
+                      <label for="newUserPasswordConfirm" class="form-label">Confirm password</label>
+                      <input id="newUserPasswordConfirm" type="password" class="form-control" minlength="8" maxlength="72" required autocomplete="new-password">
+                    </div>
+                  </div>
+
+                  <div class="d-flex justify-content-end">
+                    <button type="submit" id="createUserBtn" class="btn btn-primary">Create user</button>
+                  </div>
+                </form>
+              </section>
+            </div>
+
+            <div class="col-lg-7">
+              <section class="settings-user-panel" aria-labelledby="systemUsersTitle">
+                <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+                  <div>
+                    <h3 id="systemUsersTitle" class="mb-1">System users</h3>
+                    <div class="small text-muted" id="userCountText">Loading accounts…</div>
+                  </div>
+                  <button type="button" id="refreshUsersBtn" class="btn btn-outline-secondary btn-sm">Refresh</button>
+                </div>
+
+                <div class="table-responsive settings-user-table-wrap">
+                  <table class="table table-hover align-middle">
+                    <thead>
+                      <tr>
+                        <th scope="col">User</th>
+                        <th scope="col">Role</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Employee</th>
+                      </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                      <tr><td colspan="4" class="text-center text-muted py-4">Open this panel to load users.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="modal fade"
+    id="reportEmailSettingsModal"
+    tabindex="-1"
+    aria-labelledby="reportEmailSettingsModalTitle"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <form id="reportEmailSettingsForm">
+          <div class="modal-header">
+            <div>
+              <div class="d-flex flex-wrap align-items-center gap-2">
+                <h2 class="modal-title fs-5" id="reportEmailSettingsModalTitle">
+                  Report email delivery
+                </h2>
+                <span id="reportEmailStatusBadge" class="badge text-bg-secondary">
+                  Loading
+                </span>
+              </div>
+              <div class="small text-muted mt-1">
+                Email asset-report PDFs manually or on an automatic schedule.
+              </div>
+            </div>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+
+          <div class="modal-body">
+            <div id="reportEmailAlert" role="status" aria-live="polite"></div>
+
+            <div class="settings-report-status mb-4">
+              <div>
+                <div class="settings-report-status-label">Next scheduled delivery</div>
+                <div id="reportEmailNextRun" class="settings-report-status-value">Not scheduled</div>
+              </div>
+              <div>
+                <div class="settings-report-status-label">Last successful delivery</div>
+                <div id="reportEmailLastSent" class="settings-report-status-value">Never</div>
+              </div>
+              <div>
+                <div class="settings-report-status-label">Delivery health</div>
+                <div id="reportEmailLastError" class="settings-report-status-value">No errors</div>
+              </div>
+            </div>
+
+            <div class="row g-4">
+              <div class="col-lg-6">
+                <section class="settings-report-panel" aria-labelledby="reportDeliveryTitle">
+                  <div class="settings-report-panel-heading">
+                    <span class="settings-backup-icon mb-0" aria-hidden="true">
+                      <i class="bi bi-envelope-paper"></i>
+                    </span>
+                    <div>
+                      <h3 id="reportDeliveryTitle">Report and recipients</h3>
+                      <p>Select the same asset-report data available on the Reports page.</p>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="reportEmailRecipients" class="form-label fw-semibold">
+                      Recipient email addresses
+                    </label>
+                    <textarea
+                      id="reportEmailRecipients"
+                      class="form-control"
+                      rows="3"
+                      maxlength="2000"
+                      placeholder="manager@example.com, it@example.com"
+                    ></textarea>
+                    <div class="form-text">Separate multiple addresses with commas, semicolons, or new lines.</div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="reportEmailSubject" class="form-label fw-semibold">Email subject</label>
+                    <input
+                      id="reportEmailSubject"
+                      class="form-control"
+                      maxlength="200"
+                      value="Scheduled Asset Report"
+                      required
+                    >
+                  </div>
+
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label for="scheduledReportType" class="form-label">Report type</label>
+                      <select id="scheduledReportType" class="form-select">
+                        <option value="all">All Assets</option>
+                        <option value="Available">Available Assets</option>
+                        <option value="Assigned">Assigned Assets</option>
+                        <option value="For Repair">For Repair Assets</option>
+                        <option value="Repairing">Repairing Assets</option>
+                        <option value="Lost">Lost Assets</option>
+                        <option value="For Disposal">For Disposal Assets</option>
+                        <option value="Disposed">Disposed Assets</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="scheduledReportCategory" class="form-label">Category</label>
+                      <select id="scheduledReportCategory" class="form-select">
+                        <option value="">All Categories</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="scheduledReportLocation" class="form-label">Location</label>
+                      <select id="scheduledReportLocation" class="form-select">
+                        <option value="">All Locations</option>
+                      </select>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <div class="col-lg-6">
+                <section class="settings-report-panel" aria-labelledby="reportScheduleTitle">
+                  <div class="settings-report-panel-heading">
+                    <span class="settings-backup-icon mb-0" aria-hidden="true">
+                      <i class="bi bi-calendar-check"></i>
+                    </span>
+                    <div>
+                      <h3 id="reportScheduleTitle">Automatic schedule</h3>
+                      <p>Enable this only when reports should be sent automatically.</p>
+                    </div>
+                  </div>
+
+                  <div class="form-check form-switch settings-report-switch mb-4">
+                    <input
+                      id="automaticReportEnabled"
+                      type="checkbox"
+                      class="form-check-input"
+                      role="switch"
+                    >
+                    <label class="form-check-label fw-semibold" for="automaticReportEnabled">
+                      Activate automatic report emails
+                    </label>
+                  </div>
+
+                  <div id="reportScheduleFields">
+                    <div class="row g-3">
+                      <div class="col-sm-6">
+                        <label for="reportScheduleFrequency" class="form-label">Frequency</label>
+                        <select id="reportScheduleFrequency" class="form-select">
+                          <option value="daily">Daily</option>
+                          <option value="weekly" selected>Weekly</option>
+                          <option value="monthly">Monthly</option>
+                        </select>
+                      </div>
+                      <div class="col-sm-6">
+                        <label for="reportScheduleTime" class="form-label">Send time</label>
+                        <input id="reportScheduleTime" type="time" class="form-control" value="08:00">
+                      </div>
+                      <div class="col-sm-6" id="reportScheduleWeekdayWrap">
+                        <label for="reportScheduleWeekday" class="form-label">Day of week</label>
+                        <select id="reportScheduleWeekday" class="form-select">
+                          <option value="1">Monday</option>
+                          <option value="2">Tuesday</option>
+                          <option value="3">Wednesday</option>
+                          <option value="4">Thursday</option>
+                          <option value="5">Friday</option>
+                          <option value="6">Saturday</option>
+                          <option value="0">Sunday</option>
+                        </select>
+                      </div>
+                      <div class="col-sm-6 d-none" id="reportScheduleMonthdayWrap">
+                        <label for="reportScheduleMonthday" class="form-label">Day of month</label>
+                        <input
+                          id="reportScheduleMonthday"
+                          type="number"
+                          class="form-control"
+                          min="1"
+                          max="28"
+                          value="1"
+                        >
+                      </div>
+                    </div>
+                    <div class="form-text mt-3">Schedule times use the server's local time zone.</div>
+                  </div>
+                </section>
+              </div>
+
+              <div class="col-12">
+                <section class="settings-report-panel" aria-labelledby="smtpSettingsTitle">
+                  <div class="settings-report-panel-heading">
+                    <span class="settings-backup-icon mb-0" aria-hidden="true">
+                      <i class="bi bi-hdd-network"></i>
+                    </span>
+                    <div>
+                      <h3 id="smtpSettingsTitle">Email server (SMTP)</h3>
+                      <p>Configure the account used to deliver report emails.</p>
+                    </div>
+                  </div>
+
+                  <div class="row g-3">
+                    <div class="col-md-5">
+                      <label for="reportSmtpHost" class="form-label">SMTP host</label>
+                      <input id="reportSmtpHost" class="form-control" maxlength="255" placeholder="smtp.example.com">
+                    </div>
+                    <div class="col-md-2">
+                      <label for="reportSmtpPort" class="form-label">Port</label>
+                      <input id="reportSmtpPort" type="number" class="form-control" min="1" max="65535" value="587">
+                    </div>
+                    <div class="col-md-5 d-flex align-items-end">
+                      <div class="form-check form-switch mb-2">
+                        <input id="reportSmtpSecure" type="checkbox" class="form-check-input" role="switch">
+                        <label class="form-check-label" for="reportSmtpSecure">Use direct SSL/TLS</label>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="reportSmtpUser" class="form-label">SMTP username</label>
+                      <input id="reportSmtpUser" class="form-control" maxlength="255" autocomplete="username">
+                    </div>
+                    <div class="col-md-6">
+                      <label for="reportSmtpPassword" class="form-label">SMTP password</label>
+                      <input
+                        id="reportSmtpPassword"
+                        type="password"
+                        class="form-control"
+                        maxlength="500"
+                        autocomplete="new-password"
+                        placeholder="Leave blank to keep the saved password"
+                      >
+                      <div id="reportSmtpPasswordHelp" class="form-text">No SMTP password is currently configured.</div>
+                    </div>
+                    <div class="col-12">
+                      <label for="reportSmtpFrom" class="form-label">From address</label>
+                      <input
+                        id="reportSmtpFrom"
+                        class="form-control"
+                        maxlength="255"
+                        placeholder="PRIMA IT Asset Management &lt;reports@example.com&gt;"
+                      >
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer d-flex flex-wrap justify-content-between gap-2">
+            <button
+              id="sendReportNowBtn"
+              type="button"
+              class="btn btn-outline-primary"
+            >
+              <i class="bi bi-send me-1" aria-hidden="true"></i>
+              Send saved report now
+            </button>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+              <button id="saveReportEmailSettingsBtn" type="submit" class="btn btn-primary">
+                Save settings
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="modal fade"
+    id="backupRestoreModal"
+    tabindex="-1"
+    aria-labelledby="backupRestoreModalTitle"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <form id="backupRestoreForm">
+          <div class="modal-header">
+            <div>
+              <h2 class="modal-title fs-5" id="backupRestoreModalTitle">
+                Database backup and restore
+              </h2>
+              <div class="small text-muted mt-1">
+                Export or restore all PRIMA application data.
+              </div>
+            </div>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+
+          <div class="modal-body">
+            <div id="backupRestoreAlert" role="status" aria-live="polite"></div>
+
+            <div class="settings-backup-password mb-4">
+              <label for="backupAdminPassword" class="form-label fw-semibold">
+                Admin password
+              </label>
+              <input
+                id="backupAdminPassword"
+                type="password"
+                class="form-control"
+                maxlength="72"
+                autocomplete="current-password"
+                required
+              >
+              <div class="form-text">
+                Your current administrator password is required for both operations.
+              </div>
+            </div>
+
+            <div class="row g-4">
+              <div class="col-md-6">
+                <section class="settings-backup-panel h-100" aria-labelledby="exportBackupTitle">
+                  <div class="settings-backup-icon" aria-hidden="true">
+                    <i class="bi bi-download"></i>
+                  </div>
+                  <h3 id="exportBackupTitle">Export database</h3>
+                  <p>
+                    Download a JSON backup containing all system records,
+                    users, assets, assignments, repairs, disposals, and history.
+                  </p>
+                  <div class="alert alert-info small">
+                    The file contains sensitive company data. Store it securely.
+                  </div>
+                  <button
+                    id="exportDatabaseBtn"
+                    type="button"
+                    class="btn btn-primary w-100"
+                  >
+                    <i class="bi bi-download me-1" aria-hidden="true"></i>
+                    Download backup
+                  </button>
+                </section>
+              </div>
+
+              <div class="col-md-6">
+                <section class="settings-backup-panel settings-backup-panel-danger h-100" aria-labelledby="restoreBackupTitle">
+                  <div class="settings-backup-icon" aria-hidden="true">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                  </div>
+                  <h3 id="restoreBackupTitle">Restore database</h3>
+                  <p>
+                    Replace the current database with a compatible backup.
+                    If validation or import fails, existing data is preserved.
+                  </p>
+
+                  <label for="databaseBackupFile" class="form-label fw-semibold">
+                    Backup file
+                  </label>
+                  <input
+                    id="databaseBackupFile"
+                    type="file"
+                    class="form-control mb-3"
+                    accept="application/json,.json"
+                  >
+
+                  <div class="form-check mb-3">
+                    <input
+                      id="confirmDatabaseRestore"
+                      type="checkbox"
+                      class="form-check-input"
+                    >
+                    <label class="form-check-label small" for="confirmDatabaseRestore">
+                      I understand that the current database will be replaced.
+                    </label>
+                  </div>
+
+                  <button
+                    id="restoreDatabaseBtn"
+                    type="submit"
+                    class="btn btn-outline-danger w-100"
+                  >
+                    <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>
+                    Restore backup
+                  </button>
+                </section>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+              Close
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="/js/navbar.js?v=5"></script>
+  <script src="/js/settings.js?v=3"></script>
+</body>
+</html>

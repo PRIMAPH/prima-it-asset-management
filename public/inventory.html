@@ -1,0 +1,513 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta id="themeColorMeta" name="theme-color" content="#0b1118">
+  <title>Inventory - PRIMA IT Asset Management</title>
+
+  <link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/css/app.css?v=4">
+  <link rel="stylesheet" href="/css/inventory.css?v=4">
+  <link data-dark-theme rel="stylesheet" href="/css/dark-theme.css">
+  <link data-dark-theme rel="stylesheet" href="/css/dark-components.css?v=2">
+  <link rel="stylesheet" href="/css/navigation.css?v=4">
+
+  <script src="/js/theme.js"></script>
+  <script src="/js/alerts.js?v=2"></script>
+</head>
+
+<body class="inventory-page">
+  <div id="sidebar"></div>
+
+  <main class="main-content">
+    <div class="container-fluid inventory-container">
+      <div id="inventoryAlertBox" aria-live="polite"></div>
+
+      <header class="inventory-page-header">
+        <div>
+          <div class="inventory-eyebrow">PHYSICAL ASSET AUDIT</div>
+          <h1>Inventory</h1>
+          <p>Verify the frozen asset snapshot and record physical discrepancies without changing asset records.</p>
+        </div>
+        <div class="inventory-header-actions">
+          <div class="inventory-device-preferences" aria-label="Inventory device preferences">
+            <label for="inventoryViewMode" class="small fw-semibold">View</label>
+            <select id="inventoryViewMode" class="form-select form-select-sm" aria-label="Inventory view mode">
+              <option value="auto">Auto</option>
+              <option value="mobile">Mobile</option>
+              <option value="desktop">Desktop</option>
+            </select>
+            <div class="form-check form-switch mb-0">
+              <input id="inventorySoundEnabled" class="form-check-input" type="checkbox" role="switch">
+              <label class="form-check-label small" for="inventorySoundEnabled">Sound</label>
+            </div>
+            <span id="inventoryConnectionStatus" class="inventory-connection is-connecting" role="status" aria-live="polite">
+              <span aria-hidden="true"></span>Connecting
+            </span>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+          <button id="refreshInventoryBtn" type="button" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Refresh
+          </button>
+          <button id="newInventoryBtn" type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createInventoryModal">
+            <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>New Inventory Session
+          </button>
+          </div>
+        </div>
+      </header>
+
+      <nav class="inventory-tabs" aria-label="Inventory sections">
+        <button id="inventoryActiveTabBtn" type="button" class="inventory-tab active" data-inventory-tab="active" aria-selected="true">
+          <i class="bi bi-clipboard-check" aria-hidden="true"></i>Active Inventory
+        </button>
+        <button id="inventoryHistoryTabBtn" type="button" class="inventory-tab" data-inventory-tab="history" aria-selected="false">
+          <i class="bi bi-clock-history" aria-hidden="true"></i>Inventory History
+        </button>
+        <button id="inventoryDiscrepanciesTabBtn" type="button" class="inventory-tab" data-inventory-tab="discrepancies" aria-selected="false">
+          <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>Discrepancies
+          <span id="inventoryTabIssueCount" class="badge rounded-pill text-bg-warning">0</span>
+        </button>
+      </nav>
+
+      <div id="inventoryHistoryPanel" class="d-none" data-inventory-panel="history">
+      <section class="inventory-card mb-4" aria-labelledby="inventorySessionsTitle">
+        <div class="inventory-card-header">
+          <div>
+            <h2 id="inventorySessionsTitle">Inventory History</h2>
+            <p id="inventorySessionCount">Loading sessions...</p>
+          </div>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-8">
+            <label for="inventoryHistorySearch" class="visually-hidden">Search inventory history</label>
+            <input id="inventoryHistorySearch" type="search" class="form-control" maxlength="150" placeholder="Search inventory no., name, scope, or performed by...">
+          </div>
+          <div class="col-md-4">
+            <label for="inventoryHistoryStatus" class="visually-hidden">Filter inventory status</label>
+            <select id="inventoryHistoryStatus" class="form-select">
+              <option value="">All statuses</option>
+              <option value="Draft">Draft</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-responsive inventory-session-table-wrap">
+          <table class="table table-hover align-middle inventory-table inventory-history-table mb-0">
+            <thead>
+              <tr>
+                <th scope="col">Inventory No.</th>
+                <th scope="col">Name</th>
+                <th scope="col">Scope</th>
+                <th scope="col">Status</th>
+                <th scope="col">Started By</th>
+                <th scope="col">Started At</th>
+                <th scope="col">Completed At</th>
+                <th scope="col">Expected</th>
+                <th scope="col">Checked</th>
+                <th scope="col">Verified</th>
+                <th scope="col">Discrepancies</th>
+                <th scope="col">Missing</th>
+                <th scope="col">Progress</th>
+                <th scope="col" class="text-end">Action</th>
+              </tr>
+            </thead>
+            <tbody id="inventorySessionsBody">
+              <tr><td colspan="14" class="text-center text-muted py-4">Loading inventory sessions...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      </div>
+
+      <div id="inventoryActivePanel" data-inventory-panel="active">
+      <section id="inventoryEmptyState" class="inventory-empty-state">
+        <span class="inventory-empty-icon" aria-hidden="true"><i class="bi bi-clipboard-check"></i></span>
+        <h2>Select an inventory session</h2>
+        <p>Open a session above, or create a new one to begin a physical asset audit.</p>
+      </section>
+
+      <section id="activeInventorySection" class="d-none" aria-labelledby="activeInventoryTitle">
+        <section class="inventory-mobile-progress" aria-label="Current inventory progress">
+          <div class="inventory-mobile-progress-head">
+            <div><span id="mobileInventoryNo">—</span><strong id="mobileInventoryStatus">Draft</strong></div>
+            <div class="text-end"><span>Checked</span><strong><span id="mobileInventoryChecked">0</span> / <span id="mobileInventoryExpected">0</span></strong></div>
+          </div>
+          <div class="progress" role="progressbar" aria-label="Mobile inventory progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="mobileInventoryProgressBar" class="progress-bar" style="width:0%"></div>
+          </div>
+          <div class="inventory-mobile-progress-stats">
+            <span>Progress <strong id="mobileInventoryProgress">0%</strong></span>
+            <span>Issues <strong id="mobileInventoryDiscrepancies">0</strong></span>
+            <span>Remaining <strong id="mobileInventoryRemaining">0</strong></span>
+          </div>
+        </section>
+
+        <div class="inventory-card mb-4">
+          <div class="inventory-active-header">
+            <div>
+              <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                <span id="activeInventoryNo" class="inventory-number">—</span>
+                <span id="activeInventoryStatus" class="badge text-bg-secondary">Draft</span>
+              </div>
+              <h2 id="activeInventoryTitle">Inventory session</h2>
+              <p id="activeInventoryScopeText">All Assets</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <button id="startInventoryBtn" type="button" class="btn btn-success d-none">
+                <i class="bi bi-play-fill me-1" aria-hidden="true"></i>Start Inventory
+              </button>
+              <button id="completeInventoryBtn" type="button" class="btn btn-primary d-none">
+                <i class="bi bi-check2-square me-1" aria-hidden="true"></i>Complete Inventory
+              </button>
+              <button id="printInventoryBtn" type="button" class="btn btn-outline-primary d-none">
+                <i class="bi bi-printer me-1" aria-hidden="true"></i>Print
+              </button>
+              <button id="exportInventoryBtn" type="button" class="btn btn-outline-success d-none">
+                <i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>Export
+              </button>
+            </div>
+          </div>
+
+          <dl class="inventory-metadata-grid">
+            <div><dt>Inventory Name</dt><dd id="activeInventoryName">—</dd></div>
+            <div><dt>Scope</dt><dd id="activeInventoryScope">—</dd></div>
+            <div><dt>Started By</dt><dd id="activeInventoryStartedBy">—</dd></div>
+            <div><dt>Started At</dt><dd id="activeInventoryStartedAt">—</dd></div>
+            <div><dt>Completed At</dt><dd id="activeInventoryCompletedAt">Not completed</dd></div>
+            <div><dt>Remarks</dt><dd id="activeInventoryRemarks">—</dd></div>
+          </dl>
+        </div>
+
+        <div class="row g-3 inventory-kpi-row mb-3">
+          <div class="col-6 col-md-4 col-xl"><article class="inventory-kpi">
+            <span class="inventory-kpi-icon text-primary"><i class="bi bi-box-seam"></i></span>
+            <div><div class="inventory-kpi-label">Expected Assets</div><div id="inventoryExpectedCount" class="inventory-kpi-value">0</div></div>
+          </article></div>
+          <div class="col-6 col-md-4 col-xl"><article class="inventory-kpi">
+            <span class="inventory-kpi-icon text-info"><i class="bi bi-clipboard2-check"></i></span>
+            <div><div class="inventory-kpi-label">Checked</div><div id="inventoryCheckedCount" class="inventory-kpi-value">0</div></div>
+          </article></div>
+          <div class="col-6 col-md-4 col-xl"><article class="inventory-kpi">
+            <span class="inventory-kpi-icon text-success"><i class="bi bi-check2-circle"></i></span>
+            <div><div class="inventory-kpi-label">Verified</div><div id="inventoryVerifiedCount" class="inventory-kpi-value">0</div></div>
+          </article></div>
+          <div class="col-6 col-md-4 col-xl"><article class="inventory-kpi">
+            <span class="inventory-kpi-icon text-warning"><i class="bi bi-exclamation-triangle"></i></span>
+            <div><div class="inventory-kpi-label">Discrepancies</div><div id="inventoryDiscrepancyCount" class="inventory-kpi-value">0</div></div>
+          </article></div>
+          <div class="col-6 col-md-4 col-xl"><article class="inventory-kpi">
+            <span class="inventory-kpi-icon text-danger"><i class="bi bi-question-octagon"></i></span>
+            <div><div class="inventory-kpi-label">Missing</div><div id="inventoryMissingCount" class="inventory-kpi-value">0</div></div>
+          </article></div>
+          <div class="col-6 col-md-4 col-xl"><article class="inventory-kpi">
+            <span class="inventory-kpi-icon text-secondary"><i class="bi bi-hourglass-split"></i></span>
+            <div><div class="inventory-kpi-label">Not Yet Checked</div><div id="inventoryUncheckedCount" class="inventory-kpi-value">0</div></div>
+          </article></div>
+          <div class="col-6 col-md-4 col-xl"><article class="inventory-kpi">
+            <span class="inventory-kpi-icon text-info"><i class="bi bi-graph-up-arrow"></i></span>
+            <div><div class="inventory-kpi-label">Progress</div><div id="inventoryProgressValue" class="inventory-kpi-value">0%</div></div>
+          </article></div>
+        </div>
+
+        <div class="inventory-card inventory-progress-card mb-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-2">
+            <span class="small fw-semibold">Inventory progress</span>
+            <span id="inventoryProgressCaption" class="small text-muted">0 of 0 checked</span>
+          </div>
+          <div class="progress inventory-progress" role="progressbar" aria-label="Inventory verification progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="inventoryProgressBar" class="progress-bar" style="width:0%">0%</div>
+          </div>
+          <div class="inventory-issue-summary mt-3">
+            <span>Wrong location <strong id="inventoryWrongLocationCount">0</strong></span>
+            <span>Wrong custodian <strong id="inventoryWrongCustodianCount">0</strong></span>
+            <span>Condition changed <strong id="inventoryConditionChangedCount">0</strong></span>
+            <span>Label issues <strong id="inventoryLabelIssueCount">0</strong></span>
+          </div>
+        </div>
+
+        <section class="inventory-card inventory-live-activity mb-4" aria-labelledby="inventoryLiveActivityTitle">
+          <div class="inventory-card-header">
+            <div><h2 id="inventoryLiveActivityTitle">Live activity</h2><p>Recent changes from this device and other connected staff.</p></div>
+          </div>
+          <ol id="inventoryLiveActivityList" class="inventory-activity-list" aria-live="polite">
+            <li class="text-muted">No live activity yet.</li>
+          </ol>
+        </section>
+
+        <div id="inventoryDraftNotice" class="alert alert-info d-none" data-alert-persistent>
+          Start this Draft session to freeze its expected asset list and enable verification.
+        </div>
+        <div id="inventoryCompletedNotice" class="alert alert-success d-none" data-alert-persistent>
+          This inventory is complete and read-only. Snapshot results and discrepancy details remain available below.
+        </div>
+
+        <div class="row g-4 mb-4">
+          <div class="col-xl-5">
+            <section class="inventory-card h-100" aria-labelledby="inventoryFindTitle">
+              <div class="inventory-card-header">
+                <div>
+                  <h2 id="inventoryFindTitle">Find and verify an asset</h2>
+                  <p>Use a scanner or search the frozen inventory snapshot.</p>
+                </div>
+              </div>
+
+              <div id="inventorySearchControls">
+                <label for="inventoryAssetSearch" class="form-label fw-semibold">Scan or enter Asset Tag / Serial / Barcode / Asset Name</label>
+                <div class="input-group">
+                  <input id="inventoryAssetSearch" type="search" class="form-control" maxlength="150" autocomplete="off" placeholder="PRIMA-2026-000013 or device name">
+                  <button id="searchInventoryAssetBtn" type="button" class="btn btn-primary" aria-label="Search inventory asset">
+                    <i class="bi bi-search" aria-hidden="true"></i><span class="d-none d-sm-inline ms-1">Search</span>
+                  </button>
+                  <button id="inventoryScanBtn" type="button" class="btn btn-outline-primary" aria-label="Start continuous inventory scanner">
+                    <i class="bi bi-qr-code-scan" aria-hidden="true"></i><span class="ms-1">Start Scanner</span>
+                  </button>
+                </div>
+                <div id="inventorySearchResults" class="inventory-search-results d-none" aria-live="polite"></div>
+              </div>
+
+              <article id="selectedInventoryAsset" class="inventory-selected-asset d-none" aria-labelledby="selectedAssetTitle">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                  <div>
+                    <div class="inventory-eyebrow mb-1">SELECTED ASSET</div>
+                    <h3 id="selectedAssetTitle">Asset</h3>
+                  </div>
+                  <span id="selectedAssetVerificationBadge" class="badge text-bg-secondary">Not Yet Checked</span>
+                </div>
+
+                <div id="existingVerificationNotice" class="alert alert-info d-none" data-alert-persistent>
+                  <strong><i class="bi bi-pencil-square me-1" aria-hidden="true"></i> EXISTING VERIFICATION</strong>
+                  <div id="existingVerificationDetails" class="small mt-2"></div>
+                </div>
+
+                <dl class="inventory-asset-grid inventory-identity-grid">
+                  <div><dt>Asset Tag</dt><dd id="selectedAssetTag">—</dd></div>
+                  <div><dt>Asset Name</dt><dd id="selectedAssetName">—</dd></div>
+                  <div><dt>Category</dt><dd id="selectedAssetCategory">—</dd></div>
+                  <div><dt>Brand / Model</dt><dd id="selectedAssetBrandModel">—</dd></div>
+                  <div><dt>Serial Number</dt><dd id="selectedAssetSerial">—</dd></div>
+                  <div><dt>Barcode</dt><dd id="selectedAssetBarcode">—</dd></div>
+                  <div><dt>Asset Status</dt><dd id="selectedAssetStatus">—</dd></div>
+                  <div><dt>Verification Method</dt><dd id="selectedVerificationMethod">Manual Search</dd></div>
+                </dl>
+
+                <form id="inventoryVerificationForm" class="mt-3">
+                  <div class="inventory-observation-grid">
+                    <div class="inventory-observation-row">
+                      <div><span class="inventory-observation-label">Expected Location</span><strong id="selectedExpectedLocation">—</strong></div>
+                      <div><label for="actualInventoryLocation" class="form-label">Actual Location</label><select id="actualInventoryLocation" class="form-select"><option value="">Unknown / No recorded location</option></select></div>
+                    </div>
+                    <div class="inventory-observation-row">
+                      <div><span class="inventory-observation-label">Expected Custodian</span><strong id="selectedExpectedCustodian">IT Inventory / Unassigned</strong></div>
+                      <div><label for="actualInventoryCustodian" class="form-label">Actual Custodian</label><select id="actualInventoryCustodian" class="form-select"><option value="">IT Inventory / Unassigned</option></select></div>
+                    </div>
+                    <div class="inventory-observation-row">
+                      <div><span class="inventory-observation-label">Expected Condition</span><strong id="selectedExpectedCondition">—</strong></div>
+                      <div><label for="actualInventoryCondition" class="form-label">Actual Condition</label><select id="actualInventoryCondition" class="form-select" required><option value="New">New</option><option value="Good">Good</option><option value="Fair">Fair</option><option value="Damaged">Damaged</option></select></div>
+                    </div>
+                  </div>
+
+                  <div class="row g-3 mt-1">
+                    <div class="col-md-6"><label for="inventoryLabelCondition" class="form-label">Label Condition</label><select id="inventoryLabelCondition" class="form-select" required><option value="Good">Good</option><option value="QR Unreadable">QR Unreadable</option><option value="Barcode Unreadable">Barcode Unreadable</option><option value="Damaged">Damaged</option><option value="Missing Label">Missing Label</option></select></div>
+                    <div class="col-12"><label for="inventoryVerificationRemarks" class="form-label">Verification Remarks</label><textarea id="inventoryVerificationRemarks" class="form-control" rows="2" maxlength="2000" placeholder="Optional physical observation notes..."></textarea></div>
+                  </div>
+
+                  <div id="inventoryDiscrepancyPreview" class="inventory-discrepancy-preview mt-3" aria-live="polite"></div>
+                  <div id="inventoryVerificationResult" class="alert d-none mt-3" data-alert-persistent></div>
+
+                  <div class="inventory-verification-actions d-flex flex-wrap justify-content-end gap-2 mt-3">
+                    <button id="clearSelectedInventoryAssetBtn" type="button" class="btn btn-outline-secondary">Close</button>
+                    <button id="verifyInventoryAssetBtn" type="submit" class="btn btn-success">
+                      <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Verify Asset
+                    </button>
+                  </div>
+                </form>
+              </article>
+            </section>
+          </div>
+
+          <div class="col-xl-7">
+            <section class="inventory-card h-100" aria-labelledby="inventoryItemsTitle">
+              <div class="inventory-card-header inventory-items-header">
+                <div><h2 id="inventoryItemsTitle">Inventory asset snapshot</h2><p id="inventoryItemsCount">0 assets</p></div>
+                <button id="refreshInventoryItemsBtn" type="button" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>Refresh</button>
+              </div>
+
+              <div class="row g-2 mb-3">
+                <div class="col-lg-6"><label for="inventoryItemSearch" class="visually-hidden">Search inventory assets</label><input id="inventoryItemSearch" type="search" class="form-control" maxlength="150" placeholder="Search snapshot assets..."></div>
+                <div class="col-sm-6 col-lg-3"><label for="inventoryItemStatusFilter" class="visually-hidden">Result filter</label><select id="inventoryItemStatusFilter" class="form-select"><option value="">All</option><option value="Verified">Verified</option><option value="Discrepancies">Discrepancies</option><option value="Not Yet Checked">Not Yet Checked</option><option value="Missing">Missing</option></select></div>
+                <div id="inventoryDiscrepancyFilterField" class="col-sm-6 col-lg-3 d-none"><label for="inventoryDiscrepancyFilter" class="visually-hidden">Discrepancy type</label><select id="inventoryDiscrepancyFilter" class="form-select"><option value="Discrepancies">All issues</option><option value="Wrong Location">Wrong Location</option><option value="Wrong Custodian">Wrong Custodian</option><option value="Condition Changed">Condition Changed</option><option value="Label Issue">Label Issue</option></select></div>
+              </div>
+
+              <div class="table-responsive inventory-items-table-wrap">
+                <table class="table table-hover align-middle inventory-table inventory-results-table mb-0">
+                  <thead><tr><th scope="col">Asset Tag</th><th scope="col">Asset</th><th scope="col">Custodian</th><th scope="col">Location</th><th scope="col">Condition</th><th scope="col">Label</th><th scope="col">Result</th><th scope="col">Checked</th><th scope="col">Action</th></tr></thead>
+                  <tbody id="inventoryItemsBody"><tr><td colspan="9" class="text-center text-muted py-4">Select an inventory session.</td></tr></tbody>
+                </table>
+              </div>
+              <div id="inventoryItemsMobile" class="inventory-mobile-items" aria-live="polite"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+      </div>
+
+      <div id="inventoryDiscrepanciesPanel" class="d-none" data-inventory-panel="discrepancies">
+        <section class="inventory-card" aria-labelledby="inventoryDiscrepanciesTitle">
+          <div class="inventory-card-header inventory-items-header">
+            <div>
+              <h2 id="inventoryDiscrepanciesTitle">Discrepancy Review</h2>
+              <p id="inventoryDiscrepancySessionText">Select an inventory session to review its issues.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <button id="printDiscrepancyReportBtn" type="button" class="btn btn-outline-warning btn-sm" disabled>
+                <i class="bi bi-printer me-1" aria-hidden="true"></i>Print Discrepancy Report
+              </button>
+              <button id="exportDiscrepancyBtn" type="button" class="btn btn-outline-success btn-sm" disabled>
+                <i class="bi bi-file-earmark-excel me-1" aria-hidden="true"></i>Export Excel
+              </button>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-lg-7">
+              <label for="inventoryDiscrepancySearch" class="visually-hidden">Search discrepancies</label>
+              <input id="inventoryDiscrepancySearch" type="search" class="form-control" maxlength="150" placeholder="Search asset tag, asset, custodian, or location...">
+            </div>
+            <div class="col-lg-5">
+              <label for="inventoryDiscrepancyTabFilter" class="visually-hidden">Discrepancy type</label>
+              <select id="inventoryDiscrepancyTabFilter" class="form-select">
+                <option value="All Issues">All Issues</option>
+                <option value="Wrong Location">Wrong Location</option>
+                <option value="Wrong Custodian">Wrong Custodian</option>
+                <option value="Condition Changed">Condition Changed</option>
+                <option value="Label Issue">Label Issue</option>
+                <option value="Missing">Missing</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive inventory-discrepancy-table-wrap">
+            <table class="table table-hover align-middle inventory-table inventory-discrepancy-table mb-0">
+              <thead><tr><th>Asset</th><th>Issue(s)</th><th>Custodian</th><th>Location</th><th>Condition</th><th>Label</th><th>Review</th><th>Actions</th></tr></thead>
+              <tbody id="inventoryDiscrepanciesBody"><tr><td colspan="8" class="text-center text-muted py-4">Select an inventory session.</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <div class="modal fade" id="createInventoryModal" tabindex="-1" aria-labelledby="createInventoryModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><form id="createInventoryForm">
+      <div class="modal-header"><div><h2 class="modal-title fs-5" id="createInventoryModalTitle">Create inventory session</h2><div class="small text-muted mt-1">The expected asset snapshot is created when you start the session.</div></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+      <div class="modal-body">
+        <div class="mb-3"><label for="inventoryName" class="form-label fw-semibold">Inventory Name</label><input id="inventoryName" name="name" class="form-control" maxlength="200" required placeholder="2026 Annual IT Asset Inventory"></div>
+        <div class="mb-3"><label for="inventoryScopeType" class="form-label fw-semibold">Scope Type</label><select id="inventoryScopeType" name="scope_type" class="form-select" required><option value="All Assets">All Assets</option><option value="Department">Department</option><option value="Location">Location</option><option value="Category">Category</option><option value="Custodian">Custodian</option></select></div>
+        <div id="inventoryDepartmentField" class="mb-3 d-none"><label for="inventoryDepartmentId" class="form-label fw-semibold">Department</label><select id="inventoryDepartmentId" name="department_id" class="form-select" disabled><option value="">Select department</option></select></div>
+        <div id="inventoryLocationField" class="mb-3 d-none"><label for="inventoryLocationId" class="form-label fw-semibold">Location</label><select id="inventoryLocationId" name="location_id" class="form-select" disabled><option value="">Select location</option></select></div>
+        <div id="inventoryCategoryField" class="mb-3 d-none"><label for="inventoryCategoryId" class="form-label fw-semibold">Category</label><select id="inventoryCategoryId" name="category_id" class="form-select" disabled><option value="">Select category</option></select></div>
+        <div id="inventoryCustodianField" class="mb-3 d-none"><label for="inventoryEmployeeId" class="form-label fw-semibold">Custodian</label><select id="inventoryEmployeeId" name="employee_id" class="form-select" disabled><option value="">Select custodian</option></select></div>
+        <div><label for="inventoryRemarks" class="form-label fw-semibold">Remarks</label><textarea id="inventoryRemarks" name="remarks" class="form-control" rows="3" maxlength="2000" placeholder="Optional inventory notes..."></textarea></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button id="createInventoryBtn" type="submit" class="btn btn-primary">Create Draft</button></div>
+    </form></div></div>
+  </div>
+
+  <div class="modal fade" id="completeInventoryModal" tabindex="-1" aria-labelledby="completeInventoryModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+      <div class="modal-header"><div><h2 class="modal-title fs-5" id="completeInventoryModalTitle">Complete inventory</h2><div class="small text-muted mt-1">This action locks the inventory results.</div></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+      <div class="modal-body">
+        <div class="inventory-complete-warning"><span class="inventory-complete-icon" aria-hidden="true"><i class="bi bi-exclamation-triangle"></i></span><div><strong id="completeInventoryWarningTitle">Review unchecked assets</strong><p id="completeInventoryWarningText" class="mb-0 mt-2">Unchecked assets will be marked Missing.</p></div></div>
+        <p class="small text-muted mt-3 mb-0">Missing means the asset was not physically located in this session. Its main asset status, location, condition, and assignment will remain unchanged.</p>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button id="confirmCompleteInventoryBtn" type="button" class="btn btn-primary">Complete Inventory</button></div>
+    </div></div>
+  </div>
+
+  <div class="modal fade" id="inventoryScannerModal" tabindex="-1" aria-labelledby="inventoryScannerModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered inventory-scanner-dialog"><div class="modal-content">
+      <div class="modal-header"><div><h2 class="modal-title fs-5" id="inventoryScannerModalTitle"><i class="bi bi-qr-code-scan me-2" aria-hidden="true"></i>Continuous inventory scanner</h2><div class="small text-muted mt-1">Scan QR codes and common one-dimensional barcodes without reopening the camera.</div></div><button type="button" class="btn-close" data-scanner-stop aria-label="Stop scanner and close"></button></div>
+      <div class="modal-body">
+        <div id="inventoryScannerMessage" class="alert alert-info" data-alert-persistent>Starting camera...</div>
+        <div id="inventoryCameraField" class="inventory-camera-field d-none">
+          <label for="inventoryCameraSelect" class="form-label">Camera</label>
+          <select id="inventoryCameraSelect" class="form-select"></select>
+        </div>
+        <div id="inventoryScanner" class="inventory-scanner-region"></div>
+        <button id="inventoryScannerManualSearchBtn" type="button" class="btn btn-link inventory-scanner-manual">
+          <i class="bi bi-search me-1" aria-hidden="true"></i>Use Manual Search
+        </button>
+      </div>
+      <div class="modal-footer inventory-scanner-controls">
+        <button id="pauseInventoryScannerBtn" type="button" class="btn btn-outline-secondary"><i class="bi bi-pause-fill me-1" aria-hidden="true"></i>Pause</button>
+        <button id="stopInventoryScannerBtn" type="button" class="btn btn-secondary"><i class="bi bi-stop-fill me-1" aria-hidden="true"></i>Stop Scanner</button>
+      </div>
+    </div></div>
+  </div>
+
+  <aside id="inventoryScanFeedback" class="inventory-scan-feedback d-none" role="status" aria-live="assertive" aria-atomic="true">
+    <div class="inventory-scan-feedback-card">
+      <span id="inventoryScanFeedbackIcon" class="inventory-scan-feedback-icon" aria-hidden="true"></span>
+      <strong id="inventoryScanFeedbackTitle">Verified</strong>
+      <span id="inventoryScanFeedbackAsset"></span>
+      <span id="inventoryScanFeedbackDetail" class="small"></span>
+      <div class="d-flex justify-content-center gap-2 mt-2">
+        <button id="inventoryScanFeedbackViewBtn" type="button" class="btn btn-sm btn-outline-light d-none">View Verification</button>
+        <button id="inventoryScanFeedbackContinueBtn" type="button" class="btn btn-sm btn-light">Continue Scanning</button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="modal fade" id="inventoryReviewModal" tabindex="-1" aria-labelledby="inventoryReviewModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <form id="inventoryReviewForm">
+          <div class="modal-header">
+            <div>
+              <h2 class="modal-title fs-5" id="inventoryReviewModalTitle">Review inventory discrepancy</h2>
+              <div id="inventoryReviewAssetText" class="small text-muted mt-1">Asset</div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div id="inventoryReviewIssues" class="inventory-review-issues mb-3"></div>
+            <div class="alert alert-info small" data-alert-persistent>
+              This review records an administrative decision only. It does not change the live asset location, custodian, condition, or assignment.
+            </div>
+            <div class="mb-3">
+              <label for="inventoryReviewStatus" class="form-label fw-semibold">Review Status</label>
+              <select id="inventoryReviewStatus" class="form-select" required>
+                <option value="Pending Review">Pending Review</option>
+                <option value="Reviewed">Reviewed</option>
+                <option value="Action Required">Action Required</option>
+                <option value="Resolved">Resolved</option>
+                <option value="No Change Required">No Change Required</option>
+              </select>
+            </div>
+            <div>
+              <label for="inventoryReviewRemarks" class="form-label fw-semibold">Review Remarks</label>
+              <textarea id="inventoryReviewRemarks" class="form-control" rows="4" maxlength="2000" placeholder="Document the review result or required follow-up..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button id="saveInventoryReviewBtn" type="submit" class="btn btn-primary">
+              <i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Save Review
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="/vendor/html5-qrcode/html5-qrcode.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/navbar.js?v=5"></script>
+  <script src="/js/inventory.js?v=4"></script>
+</body>
+</html>
