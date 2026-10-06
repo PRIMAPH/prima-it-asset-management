@@ -102,19 +102,27 @@ function getScannerAssetImageUrl(imagePath) {
         box.classList.remove("d-none");
     }
 
-    function getRepairJobOrderNumber(value) {
-        const scannedValue =
-            String(value || "").trim();
+function getRepairJobOrderNumber(value) {
 
-        const match =
-            scannedValue.match(
-                /^REP-\d{4}-\d{6}$/i
-            );
+    const scannedValue =
+        String(value || "")
+            .trim();
 
-        return match
-            ? match[0].toUpperCase()
-            : "";
+    if (!scannedValue) {
+        return "";
     }
+
+    // Detect Repair Job Order number anywhere
+    // inside the scanned QR / barcode value.
+    const match =
+        scannedValue.match(
+            /REP-\d{4}-\d{6}/i
+        );
+
+    return match
+        ? match[0].toUpperCase()
+        : "";
+}
 
     async function openScannedRepairJobOrder(
         repairNumber

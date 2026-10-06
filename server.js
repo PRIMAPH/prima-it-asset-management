@@ -1770,11 +1770,26 @@ app.post('/api/assets', requireLogin, async (req, res) => {
 
     await connection.beginTransaction();
 
-    const [yearRows] = await connection.query(
-      "SELECT COUNT(*) AS total FROM assets WHERE YEAR(created_at) = YEAR(CURDATE())"
-    );
-    const nextNumber = Number(yearRows[0].total || 0) + 1;
-    const assetId = `PRIMA-${new Date().getFullYear()}-${String(nextNumber).padStart(6, '0')}`;
+    const currentYear = new Date().getFullYear();
+    const assetPrefix = `PRIMA-${currentYear}-`;
+
+    const [numberRows] = await connection.query(`
+      SELECT
+        COALESCE(
+          MAX(
+            CAST(
+              SUBSTRING_INDEX(asset_id, '-', -1)
+              AS UNSIGNED
+            )
+          ),
+          0
+        ) AS highest_number
+      FROM assets
+      WHERE asset_id LIKE ?
+    `, [`${assetPrefix}%`]);
+
+    const nextNumber = Number(numberRows[0]?.highest_number || 0) + 1;
+    const assetId = `${assetPrefix}${String(nextNumber).padStart(6, '0')}`;
 
     const [result] = await connection.query(`
       INSERT INTO assets (
@@ -1812,10 +1827,20 @@ app.post('/api/assets', requireLogin, async (req, res) => {
     res.status(201).json({ ok: true, id: result.insertId, asset_id: assetId, message: 'Asset created successfully.' });
   } catch (error) {
     await connection.rollback();
-    const message = error.code === 'ER_DUP_ENTRY'
-      ? 'The asset ID, serial number, or barcode already exists.'
-      : 'Unable to create asset.';
-    res.status(500).json({ message, error: error.message });
+
+    if (error.code === 'ER_DUP_ENTRY') {
+      console.error('CREATE ASSET DUPLICATE:', error.message);
+      return res.status(409).json({
+        message: 'The Asset Tag, serial number, or barcode already exists.',
+        error: error.message
+      });
+    }
+
+    console.error('CREATE ASSET ERROR:', error);
+    return res.status(500).json({
+      message: 'Unable to create asset.',
+      error: error.message
+    });
   } finally {
     connection.release();
   }
