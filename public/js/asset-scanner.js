@@ -124,6 +124,66 @@ function getRepairJobOrderNumber(value) {
         : "";
 }
 
+function getRepairIdFromScannedUrl(value) {
+
+    const scannedValue =
+        String(value || "")
+            .trim();
+
+    if (!scannedValue) {
+        return 0;
+    }
+
+    try {
+        const url =
+            new URL(
+                scannedValue,
+                window.location.origin
+            );
+
+        const pathname =
+            url.pathname
+                .replace(/\/+$/, "")
+                .toLowerCase();
+
+        let repairIdValue = "";
+
+        if (pathname === "/repair-job-order.html") {
+            repairIdValue =
+                url.searchParams.get("id") ||
+                url.searchParams.get("repair_id") ||
+                "";
+        } else if (
+            pathname === "/maintenance" ||
+            pathname === "/maintenance.html"
+        ) {
+            repairIdValue =
+                url.searchParams.get("repair_id") ||
+                "";
+        } else {
+            return 0;
+        }
+
+        const normalizedId =
+            String(repairIdValue).trim();
+
+        if (!/^\d+$/.test(normalizedId)) {
+            return 0;
+        }
+
+        const repairId =
+            Number(normalizedId);
+
+        return Number.isSafeInteger(repairId) &&
+            repairId > 0
+            ? repairId
+            : 0;
+
+    } catch {
+        return 0;
+    }
+}
+
     async function openScannedRepairJobOrder(
         repairNumber
     ) {
@@ -955,35 +1015,25 @@ function getRepairJobOrderNumber(value) {
          * --------------------------------------------------------
          */
 
-        try {
+        const repairId =
+            getRepairIdFromScannedUrl(
+                scannedValue
+            );
 
-            const url =
-                new URL(
-                    scannedValue,
-                    window.location.origin
-                );
+        if (repairId) {
 
-            const repairId =
-                url.searchParams.get("repair_id");
+            await stopAssetScanner();
 
-            if (repairId) {
-
-                await stopAssetScanner();
-
-                if (scanAssetModal) {
-                    scanAssetModal.hide();
-                }
-
-                window.location.href =
-                    `/maintenance?repair_id=${encodeURIComponent(
-                        repairId
-                    )}`;
-
-                return;
+            if (scanAssetModal) {
+                scanAssetModal.hide();
             }
 
-        } catch {
-            // Not a URL.
+            window.location.href =
+                `/maintenance?repair_id=${encodeURIComponent(
+                    repairId
+                )}`;
+
+            return;
         }
 
         /*
@@ -1000,6 +1050,11 @@ function getRepairJobOrderNumber(value) {
         if (
             repairJobOrderNumber
         ) {
+            console.log(
+                "Repair Job Order detected:",
+                repairJobOrderNumber
+            );
+
             await openScannedRepairJobOrder(
                 repairJobOrderNumber
             );
