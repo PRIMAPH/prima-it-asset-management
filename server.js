@@ -2721,6 +2721,89 @@ function normalizeExcelDate(value) {
 // IMPORT ASSETS FROM EXCEL / CSV
 // ============================================================
 
+app.get('/api/import/template/assets', requireAdmin, (req, res) => {
+
+  try {
+
+    const workbook = XLSX.utils.book_new();
+
+    const headers = [
+      'Asset Name',
+      'Category',
+      'Brand',
+      'Model',
+        'Serial Number',
+      'Barcode',
+      'Purchase Date',
+      'Purchase Cost',
+      'Warranty Expiry',
+      'Condition',
+      'Status',
+      'Location',
+      'Notes'
+    ];
+
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      headers,
+      [
+        'Laptop',
+        'Laptop',
+        'Dell',
+        'Latitude 5420',
+        'TEST-SERIAL-001',
+        'TEST-BARCODE-001',
+        '2026-01-15',
+        45000,
+        '2029-01-15',
+        'Good',
+        'Available',
+        'IT Department',
+        'Sample only'
+      ]
+    ]);
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      'Assets'
+    );
+
+    const buffer = XLSX.write(
+      workbook,
+      {
+        type: 'buffer',
+        bookType: 'xlsx'
+      }
+    );
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="asset-import-template.xlsx"'
+    );
+
+    res.send(buffer);
+
+  } catch (error) {
+
+    console.error(
+      'ASSET IMPORT TEMPLATE ERROR:',
+      error
+    );
+
+    res.status(500).json({
+      message: 'Unable to generate asset import template.'
+    });
+
+  }
+
+});
+
+
 app.post(
   '/api/assets/import',
   requireAdmin,
@@ -2984,92 +3067,6 @@ app.post(
         return null;
 
       }
-
-
-
-app.get('/api/import/template/assets', requireAdmin, (req, res) => {
-
-  try {
-
-    const workbook = XLSX.utils.book_new();
-
-    const headers = [
-      'Asset Name',
-      'Category',
-      'Brand',
-      'Model',
-        'Serial Number',
-      'Barcode',
-      'Purchase Date',
-      'Purchase Cost',
-      'Warranty Expiry',
-      'Condition',
-      'Status',
-      'Location',
-      'Notes'
-    ];
-
-    const worksheet = XLSX.utils.aoa_to_sheet([
-      headers,
-      [
-        'Laptop',
-        'Laptop',
-        'Dell',
-        'Latitude 5420',
-        'TEST-SERIAL-001',
-        'TEST-BARCODE-001',
-        '2026-01-15',
-        45000,
-        '2029-01-15',
-        'Good',
-        'Available',
-        'IT Department',
-        'Sample only'
-      ]
-    ]);
-
-    XLSX.utils.book_append_sheet(
-      workbook,
-      worksheet,
-      'Assets'
-    );
-
-    const buffer = XLSX.write(
-      workbook,
-      {
-        type: 'buffer',
-        bookType: 'xlsx'
-      }
-    );
-
-    res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    );
-
-    res.setHeader(
-      'Content-Disposition',
-      'attachment; filename="asset-import-template.xlsx"'
-    );
-
-    res.send(buffer);
-
-  } catch (error) {
-
-    console.error(
-      'ASSET IMPORT TEMPLATE ERROR:',
-      error
-    );
-
-    res.status(500).json({
-      message: 'Unable to generate asset import template.'
-    });
-
-  }
-
-});
-
-
       // ========================================================
       // HELPER - NORMALIZE MONEY
       // ========================================================
@@ -7986,6 +7983,7 @@ app.get('/api/repairs/:id', requireLogin, async (req, res) => {
         d.disposal_no,
         d.status AS disposal_status,
         d.disposal_method,
+        d.disposal_remarks,
         a.id AS db_asset_id,
         a.asset_id AS asset_code,
         a.asset_name,
@@ -10426,6 +10424,23 @@ app.post('/api/disposals', requireMaintenanceStaff, async (req, res) => {
       });
     }
 
+    const [forDisposalRepairs] = await conn.query(`
+      SELECT id, asset_id
+      FROM asset_repairs
+      WHERE asset_id IN (${placeholders})
+        AND status = 'For Disposal'
+      ORDER BY id DESC
+      FOR UPDATE
+    `, normalizedAssetIds);
+
+    const repairIdByAsset = new Map();
+
+    for (const repair of forDisposalRepairs) {
+      if (!repairIdByAsset.has(repair.asset_id)) {
+        repairIdByAsset.set(repair.asset_id, repair.id);
+      }
+    }
+
     const year = new Date().getFullYear();
 
     const [lastDisposal] = await conn.query(`
@@ -10452,6 +10467,10 @@ app.post('/api/disposals', requireMaintenanceStaff, async (req, res) => {
       `DISP-${year}-${String(nextNumber).padStart(4, '0')}`;
 
     const firstAssetId = normalizedAssetIds[0];
+    const disposalRepairId =
+      normalizedAssetIds.length === 1
+        ? repairIdByAsset.get(firstAssetId) || null
+        : null;
 
     const [disposalResult] = await conn.query(`
       INSERT INTO asset_disposals (
@@ -10464,10 +10483,11 @@ app.post('/api/disposals', requireMaintenanceStaff, async (req, res) => {
         status,
         created_by
       )
-      VALUES (?, ?, NULL, ?, ?, ?, 'Pending Approval', ?)
+      VALUES (?, ?, ?, ?, ?, ?, 'Pending Approval', ?)
     `, [
       disposalNo,
       firstAssetId,
+      disposalRepairId,
       reason,
       recommendation,
       disposalMethod,
@@ -10485,10 +10505,11 @@ app.post('/api/disposals', requireMaintenanceStaff, async (req, res) => {
           reason,
           remarks
         )
-        VALUES (?, ?, NULL, ?, ?)
+        VALUES (?, ?, ?, ?, ?)
       `, [
         disposalId,
         assetId,
+        repairIdByAsset.get(assetId) || null,
         reason,
         remarks || null
       ]);
@@ -10838,23 +10859,71 @@ app.put('/api/disposals/:id/reject', requireMaintenanceStaff, async (req, res) =
     `, [remarks, disposalId]);
 
     const [items] = await conn.query(`
-      SELECT asset_id
+      SELECT asset_id, repair_id
       FROM asset_disposal_items
       WHERE disposal_id = ?
     `, [disposalId]);
 
     for (const item of items) {
-      await conn.query(`
+      let repairId =
+        Number(item.repair_id || 0);
+
+      if (
+        Number.isInteger(repairId) &&
+        repairId > 0
+      ) {
+        const [linkedRepairs] = await conn.query(`
+          SELECT id
+          FROM asset_repairs
+          WHERE id = ?
+            AND asset_id = ?
+            AND status = 'For Disposal'
+          LIMIT 1
+          FOR UPDATE
+        `, [repairId, item.asset_id]);
+
+        repairId = Number(linkedRepairs[0]?.id || 0);
+      } else {
+        repairId = 0;
+      }
+
+      if (!repairId) {
+        const [fallbackRepairs] = await conn.query(`
+          SELECT id
+          FROM asset_repairs
+          WHERE asset_id = ?
+            AND status = 'For Disposal'
+          ORDER BY id DESC
+          LIMIT 1
+          FOR UPDATE
+        `, [item.asset_id]);
+
+        repairId = Number(fallbackRepairs[0]?.id || 0);
+      }
+
+      const [assetUpdate] = await conn.query(`
         UPDATE assets
-        SET status = 'For Disposal'
+        SET status = 'For Repair'
         WHERE id = ?
           AND status = 'For Disposal'
       `, [item.asset_id]);
 
-      await conn.query(`
-        INSERT INTO asset_history (asset_id, action, from_status, to_status, remarks, performed_by)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, [item.asset_id, 'Disposal Request Rejected', 'For Disposal', 'For Disposal', `Disposal request ${disposal.disposal_no} rejected. ${remarks}`, req.session.user.id]);
+      if (repairId) {
+        await conn.query(`
+          UPDATE asset_repairs
+          SET status = 'For Repair'
+          WHERE id = ?
+            AND asset_id = ?
+            AND status = 'For Disposal'
+        `, [repairId, item.asset_id]);
+      }
+
+      if (assetUpdate.affectedRows > 0) {
+        await conn.query(`
+          INSERT INTO asset_history (asset_id, action, from_status, to_status, remarks, performed_by)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `, [item.asset_id, 'Disposal Request Rejected', 'For Disposal', 'For Repair', `Disposal request ${disposal.disposal_no} rejected. Reason: ${remarks}`, req.session.user.id]);
+      }
     }
 
     await conn.query(`

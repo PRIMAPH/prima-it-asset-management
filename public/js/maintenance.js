@@ -3089,6 +3089,18 @@ function renderRepairActions(
 
   if (message) {
 
+    message.classList.remove(
+      'alert-warning',
+      'alert-info',
+      'alert-primary',
+      'alert-success',
+      'alert-danger'
+    );
+
+    message.classList.add(
+      'alert-secondary'
+    );
+
     message.classList.add(
       'd-none'
     );
@@ -3131,6 +3143,74 @@ function renderRepairActions(
       'markBeyondRepairBtn',
       true
     );
+
+
+    if (
+      status === 'For Repair' &&
+      repair.disposal_status === 'Rejected' &&
+      message
+    ) {
+
+      const disposalNumber =
+        String(
+          repair.disposal_no ||
+          ''
+        ).trim();
+
+
+      const rejectionRemarks =
+        String(
+          repair.disposal_remarks ||
+          ''
+        ).trim();
+
+
+      message.classList.remove(
+        'alert-secondary'
+      );
+
+
+      message.classList.add(
+        'alert-danger'
+      );
+
+
+      message.textContent =
+        disposalNumber
+          ? `❌ Disposal Request ${disposalNumber} was rejected.`
+          : '❌ The Disposal Request was rejected.';
+
+
+      if (
+        rejectionRemarks
+      ) {
+
+        const reason =
+          document.createElement(
+            'div'
+          );
+
+
+        reason.className =
+          'mt-1';
+
+
+        reason.textContent =
+          `Reason: ${rejectionRemarks}`;
+
+
+        message.appendChild(
+          reason
+        );
+
+      }
+
+
+      message.classList.remove(
+        'd-none'
+      );
+
+    }
 
 
     return;
@@ -3298,14 +3378,153 @@ function renderRepairActions(
     }
 
 
+    const disposalStatus =
+      String(
+        repair.disposal_status ||
+        ''
+      ).trim();
+
+
+    const disposalNumber =
+      String(
+        repair.disposal_no ||
+        ''
+      ).trim();
+
+
+    const disposalLabel =
+      disposalNumber
+        ? ` ${disposalNumber}`
+        : '';
+
+
+    if (
+      disposalStatus === 'Rejected'
+    ) {
+
+      showRepairActionButton(
+        'markBeyondRepairBtn',
+        true
+      );
+
+
+      const disposalButton =
+        $('markBeyondRepairBtn');
+
+
+      if (
+        disposalButton
+      ) {
+
+        disposalButton.textContent =
+          '📝 Create New Disposal Request';
+
+      }
+
+    }
+
+
     if (
       message
     ) {
 
+      const rejectionRemarks =
+        String(
+          repair.disposal_remarks ||
+          ''
+        ).trim();
+
+
+      const disposalMessages = {
+
+        'Pending Approval': {
+          style: 'alert-warning',
+          text: `🟡 Disposal Request${disposalLabel} has been created and is awaiting IT approval.`
+        },
+
+        'IT Approved': {
+          style: 'alert-info',
+          text: `🔵 Disposal Request${disposalLabel} has been approved by IT and is awaiting Accounting approval.`
+        },
+
+        'Accounting Approved': {
+          style: 'alert-info',
+          text: `🔵 Disposal Request${disposalLabel} has been approved by Accounting and is awaiting President approval.`
+        },
+
+        'President Approved': {
+          style: 'alert-primary',
+          text: `🟣 Disposal Request${disposalLabel} has been approved by the President and is awaiting final IT authorization.`
+        },
+
+        'Approved for Disposal': {
+          style: 'alert-success',
+          text: `🟢 Disposal Request${disposalLabel} has been fully approved for disposal.`
+        },
+
+        Rejected: {
+          style: 'alert-danger',
+          text: `❌ Disposal Request${disposalLabel} was rejected.`
+        },
+
+        Disposed: {
+          style: 'alert-success',
+          text: `✅ Disposal Request${disposalLabel} has been completed and the asset has been disposed.`
+        }
+
+      };
+
+
+      const disposalMessage =
+        disposalMessages[
+          disposalStatus
+        ] || {
+          style: 'alert-secondary',
+          text:
+            disposalStatus
+              ? `Disposal Request${disposalLabel} currently has status "${disposalStatus}".`
+              : `Disposal Request${disposalLabel} exists, but its current approval status is unavailable.`
+        };
+
+
+      message.classList.remove(
+        'alert-secondary'
+      );
+
+
+      message.classList.add(
+        disposalMessage.style
+      );
+
+
       message.textContent =
-        repair.disposal_no
-          ? `✅ Disposal Request ${repair.disposal_no} has been created and is awaiting approval.`
-          : '✅ Disposal Request has been created and is awaiting approval.';
+        disposalMessage.text;
+
+
+      if (
+        disposalStatus === 'Rejected' &&
+        rejectionRemarks
+      ) {
+
+        const reason =
+          document.createElement(
+            'div'
+          );
+
+
+        reason.className =
+          'mt-1';
+
+
+        reason.textContent =
+          `Reason: ${rejectionRemarks}`;
+
+
+        message.appendChild(
+          reason
+        );
+
+      }
 
 
       message.classList.remove(
@@ -3326,8 +3545,20 @@ function renderRepairActions(
 
     if (message) {
 
+      message.classList.remove(
+        'alert-secondary'
+      );
+
+
+      message.classList.add(
+        'alert-success'
+      );
+
+
       message.textContent =
-        'Asset has been disposed.';
+        repair.disposal_no
+          ? `✅ Disposal Request ${repair.disposal_no} has been completed and the asset has been disposed.`
+          : '✅ Asset has been disposed.';
 
       message.classList.remove(
         'd-none'
