@@ -1924,7 +1924,8 @@ function showScannerImageViewer(
     // ============================================================
 
     async function showScannedAssetDetails(
-        asset
+        asset,
+        notice = ""
     ) {
 
         if (!asset || !asset.id) {
@@ -1954,6 +1955,12 @@ function showScannerImageViewer(
             const fullAsset =
                 data.asset ||
                 data;
+
+            const assetStatus =
+                String(fullAsset.status || "");
+
+            const isAssigned =
+                assetStatus === "Assigned";
 
             /*
              * ----------------------------------------------------
@@ -2010,6 +2017,47 @@ function showScannerImageViewer(
                 `;
             }
 
+            const assignmentButtonsHtml =
+                isAssigned
+                    ? `
+                        ${fullAsset.custodian_id
+                            ? `
+                                <button type="button"
+                                        class="btn btn-outline-primary"
+                                        id="scannedAssetCustodianBtn">
+
+                                    <i class="bi bi-person me-1"></i>
+                                    View Custodian
+
+                                </button>
+                              `
+                            : ""}
+
+                        <button type="button"
+                                class="btn btn-success"
+                                id="scannedAssetReturnBtn">
+
+                            <i class="bi bi-arrow-return-left me-1"></i>
+                            Return Asset
+
+                        </button>
+                      `
+                    : (
+                        assetStatus === "Available" &&
+                        !activeRepair
+                            ? `
+                                <button type="button"
+                                        class="btn btn-primary"
+                                        id="scannedAssetAssignBtn">
+
+                                    <i class="bi bi-person-check me-1"></i>
+                                    Assign
+
+                                </button>
+                              `
+                            : ""
+                    );
+
             /*
              * ----------------------------------------------------
              * DETAILS MODAL
@@ -2045,6 +2093,14 @@ function showScannerImageViewer(
                             </div>
 
                             <div class="modal-body">
+
+                                ${notice
+                                    ? `
+                                        <div class="alert alert-success" role="alert">
+                                            ${escapeHtml(notice)}
+                                        </div>
+                                      `
+                                    : ""}
 
                                 ${
                                     activeRepair
@@ -2513,14 +2569,7 @@ function showScannerImageViewer(
 
                                 </button>
 
-                                <button type="button"
-                                        class="btn btn-primary"
-                                        id="scannedAssetAssignBtn">
-
-                                    <i class="bi bi-person-check me-1"></i>
-                                    Assign
-
-                                </button>
+                                ${assignmentButtonsHtml}
 
                                 ${repairButtonHtml}
 
@@ -2549,6 +2598,16 @@ function showScannerImageViewer(
 
             const detailsModal =
                 new bootstrap.Modal(modal);
+
+            const continueAfterDetailsClose = callback => {
+                modal.addEventListener(
+                    "hidden.bs.modal",
+                    callback,
+                    { once: true }
+                );
+
+                detailsModal.hide();
+            };
                 // ============================================================
 // VIEW ASSET IMAGE
 // ============================================================
@@ -2688,19 +2747,72 @@ document
                     "click",
                     async function () {
 
-                        detailsModal.hide();
-
-                        setTimeout(
+                        continueAfterDetailsClose(
                             async () => {
-
                                 await openScannerAssignModal(
                                     fullAsset
                                 );
-
-                            },
-                            300
+                            }
                         );
 
+                    }
+                );
+
+            document
+                .getElementById(
+                    "scannedAssetCustodianBtn"
+                )
+                ?.addEventListener(
+                    "click",
+                    function () {
+                        continueAfterDetailsClose(
+                            () => {
+                                window.location.href =
+                                    `/employees?view=${encodeURIComponent(
+                                        fullAsset.custodian_id
+                                    )}`;
+                            }
+                        );
+                    }
+                );
+
+            document
+                .getElementById(
+                    "scannedAssetReturnBtn"
+                )
+                ?.addEventListener(
+                    "click",
+                    function () {
+                        continueAfterDetailsClose(
+                            () => {
+                                if (!window.PRIMAAssetReturn) {
+                                    alert(
+                                        "Return Asset is not available. Please refresh the page."
+                                    );
+                                    showScannedAssetDetails(fullAsset);
+                                    return;
+                                }
+
+                                window.PRIMAAssetReturn.open({
+                                    assetId: Number(fullAsset.id),
+                                    asset: fullAsset,
+                                    onCancel: async () => {
+                                        await showScannedAssetDetails(
+                                            fullAsset
+                                        );
+                                    },
+                                    onSuccess: async data => {
+                                        await showScannedAssetDetails(
+                                            fullAsset,
+                                            `Asset ${
+                                                data.asset_id ||
+                                                fullAsset.asset_id
+                                            } returned successfully.`
+                                        );
+                                    }
+                                });
+                            }
+                        );
                     }
                 );
 

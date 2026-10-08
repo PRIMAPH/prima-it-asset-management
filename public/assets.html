@@ -1760,11 +1760,12 @@
   aria-hidden="true"
 >
 
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
 
-    <div class="modal-content border-0 shadow">
-
-      <form id="importAssetForm">
+    <form
+      id="importAssetForm"
+      class="modal-content border-0 shadow"
+    >
 
 
         <div class="modal-header">
@@ -1838,9 +1839,7 @@
 
         </div>
 
-      </form>
-
-    </div>
+    </form>
 
   </div>
 
@@ -2090,7 +2089,7 @@
           <div class="mb-3">
 
             <div class="small text-muted">
-              Asset ID
+              Asset Tag
             </div>
 
             <div
@@ -2124,7 +2123,7 @@
             <div class="col-md-6 mb-3">
 
               <div class="small text-muted">
-                Custodian
+                Current Custodian
               </div>
 
               <div
@@ -2150,6 +2149,22 @@
                 —
               </div>
 
+            </div>
+
+          </div>
+
+
+          <div class="mb-3">
+
+            <div class="small text-muted">
+              Assigned
+            </div>
+
+            <div
+              id="returnAssignedAt"
+              class="fw-semibold"
+            >
+              &mdash;
             </div>
 
           </div>
@@ -2822,19 +2837,22 @@
 
 <script src="/js/navbar.js?v=5"></script>
 
+<script src="/vendor/xlsx/xlsx.full.min.js"></script>
+
 
 <!-- =========================================================
      ASSET JAVASCRIPT
 ========================================================= -->
 
-<script src="/js/assets.js?v=10"></script>
+<script src="/js/asset-return.js?v=1"></script>
+<script src="/js/assets.js?v=12"></script>
 
 
 <!-- =========================================================
      UNIVERSAL ASSET SCANNER
 ========================================================= -->
 
-<script src="/js/asset-scanner.js?v=6"></script>
+<script src="/js/asset-scanner.js?v=7"></script>
 </body>
 
 </html>

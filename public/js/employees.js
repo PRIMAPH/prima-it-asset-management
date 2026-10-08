@@ -9,6 +9,7 @@ let currentUser = null;
 
 let employeeModal;
 let importEmployeeModal;
+let lastEmployeeImportResults = null;
 
 
 let selectedEmployee = null;
@@ -432,6 +433,66 @@ function showEmployeeViewAlert(message, type = 'danger') {
 }
 
 
+function openEmployeeAssetReturn(
+  asset,
+  employee,
+  employeeId
+) {
+
+  const assetDbId = Number(asset?.id);
+  const employeeDbId = Number(employeeId);
+
+  if (!Number.isInteger(assetDbId) || assetDbId <= 0) {
+    showEmployeeViewAlert('Invalid asset ID.');
+    return;
+  }
+
+  if (!window.PRIMAAssetReturn) {
+    showEmployeeViewAlert(
+      'Return Asset is not available. Please refresh the page.'
+    );
+    return;
+  }
+
+  const openReturnModal = () => {
+    window.PRIMAAssetReturn.open({
+      assetId: assetDbId,
+      asset: {
+        ...asset,
+        custodian_name: employee.full_name,
+        department_name: employee.department_name
+      },
+      onCancel: async () => {
+        await viewEmployee(employeeDbId);
+      },
+      onSuccess: async data => {
+        await viewEmployee(employeeDbId);
+
+        showEmployeeViewAlert(
+          `Asset ${data.asset_id || asset.asset_id} returned successfully.`,
+          'success'
+        );
+      }
+    });
+  };
+
+  const modalElement = $('employeeViewModal');
+
+  if (modalElement?.classList.contains('show')) {
+    modalElement.addEventListener(
+      'hidden.bs.modal',
+      openReturnModal,
+      { once: true }
+    );
+
+    employeeViewModal.hide();
+    return;
+  }
+
+  openReturnModal();
+}
+
+
 async function deleteEmployee() {
   const employee = selectedEmployeeForView?.employee;
   const assignedAssets = selectedEmployeeForView?.assets || [];
@@ -534,13 +595,13 @@ viewedEmployeeDbId = Number(id);
     // LOAD CUSTODIAN + ASSIGNED ASSETS
     // -------------------------------------------------
 
-    const custodianResponse =
-      await fetch(`/api/custodians/${id}`);
+    const assignedAssetsResponse =
+      await fetch(`/api/employees/${id}/assets`);
 
-    if (!custodianResponse.ok) {
+    if (!assignedAssetsResponse.ok) {
 
       const data =
-        await custodianResponse.json().catch(() => ({}));
+        await assignedAssetsResponse.json().catch(() => ({}));
 
       throw new Error(
         data.message ||
@@ -548,12 +609,12 @@ viewedEmployeeDbId = Number(id);
       );
     }
 
-    const custodianData =
-      await custodianResponse.json();
+    const assignedAssetsData =
+      await assignedAssetsResponse.json();
 
     const assignedAssets =
-      Array.isArray(custodianData.assets)
-        ? custodianData.assets
+      Array.isArray(assignedAssetsData)
+        ? assignedAssetsData
         : [];
 
 
@@ -565,6 +626,9 @@ viewedEmployeeDbId = Number(id);
       employee,
       assets: assignedAssets
     };
+
+    selectedEmployee = employee;
+    selectedEmployeeAssets = assignedAssets;
 
     showEmployeeViewAlert('');
 
@@ -748,7 +812,7 @@ viewedEmployeeDbId = Number(id);
 
               <!-- ACTION -->
 
-              <td class="text-end">
+              <td class="text-end text-nowrap">
 
                 <button
                   type="button"
@@ -759,6 +823,20 @@ viewedEmployeeDbId = Number(id);
                   View
 
                 </button>
+
+                ${asset.status === 'Assigned'
+                  ? `
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-success employee-asset-return-btn ms-1"
+                      data-asset-id="${asset.id}">
+
+                      <i class="bi bi-arrow-return-left me-1"></i>
+                      Return
+
+                    </button>
+                  `
+                  : ''}
 
               </td>
 
@@ -817,6 +895,41 @@ viewedEmployeeDbId = Number(id);
                 assetId
               )}`;
 
+          }
+        );
+
+      });
+
+    document
+      .querySelectorAll(
+        '.employee-asset-return-btn'
+      )
+      .forEach(button => {
+
+        button.addEventListener(
+          'click',
+          () => {
+            const assetDbId =
+              Number(button.dataset.assetId);
+
+            const asset =
+              assignedAssets.find(
+                item => Number(item.id) === assetDbId
+              );
+
+            if (!asset || asset.status !== 'Assigned') {
+              showEmployeeViewAlert(
+                'This asset is no longer assigned. Refresh the employee details and try again.',
+                'warning'
+              );
+              return;
+            }
+
+            openEmployeeAssetReturn(
+              asset,
+              employee,
+              id
+            );
           }
         );
 
@@ -1270,6 +1383,287 @@ async function saveEmployee(event) {
 // IMPORT EMPLOYEES
 // =====================================================
 
+function importResultFileDate() {
+  const now = new Date();
+
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0')
+  ].join('-');
+}
+
+
+function downloadEmployeeImportResults() {
+  if (!lastEmployeeImportResults) {
+    return;
+  }
+
+  if (typeof XLSX === 'undefined') {
+    showAlert('The Excel export library is not available.', 'danger');
+    return;
+  }
+
+  const data = lastEmployeeImportResults;
+  const workbook = XLSX.utils.book_new();
+
+  const summarySheet = XLSX.utils.aoa_to_sheet([
+    ['Import Summary', 'Count'],
+    ['Total Rows', data.total],
+    ['Successfully Imported', data.imported],
+    ['Not Imported', data.skipped],
+    ['Warnings', data.warnings.length]
+  ]);
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    summarySheet,
+    'Import Summary'
+  );
+
+  if (data.successes.length) {
+    const successSheet = XLSX.utils.json_to_sheet(
+      data.successes.map(item => ({
+        'Excel Row': item.row,
+        'Employee ID': item.employee_id,
+        'Full Name': item.full_name,
+        'Email': item.email,
+        'Department': item.department,
+        'Position': item.position,
+        'Status': item.status
+      }))
+    );
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      successSheet,
+      'Successfully Imported'
+    );
+  }
+
+  if (data.errors.length) {
+    const errorSheet = XLSX.utils.json_to_sheet(
+      data.errors.map(item => ({
+        'Excel Row': item.row,
+        'Employee ID': item.employee_id,
+        'Full Name': item.full_name,
+        'Reason': item.reason
+      }))
+    );
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      errorSheet,
+      'Not Imported'
+    );
+  }
+
+  if (data.warnings.length) {
+    const warningSheet = XLSX.utils.json_to_sheet(
+      data.warnings.map(item => ({
+        'Excel Row': item.row,
+        'Record': item.employee_id || item.full_name,
+        'Warning': item.message
+      }))
+    );
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      warningSheet,
+      'Warnings'
+    );
+  }
+
+  XLSX.writeFile(
+    workbook,
+    `employee-import-results-${importResultFileDate()}.xlsx`
+  );
+}
+
+
+function renderEmployeeImportResults(rawData) {
+  const data = {
+    total: Number(rawData.total || 0),
+    imported: Number(rawData.imported || 0),
+    skipped: Number(rawData.skipped || 0),
+    successes: Array.isArray(rawData.successes)
+      ? rawData.successes
+      : [],
+    errors: Array.isArray(rawData.errors)
+      ? rawData.errors
+      : [],
+    warnings: Array.isArray(rawData.warnings)
+      ? rawData.warnings
+      : []
+  };
+
+  lastEmployeeImportResults = data;
+
+  let alertType = 'success';
+  let heading = '✅ Import Completed';
+
+  if (data.imported > 0 && data.skipped > 0) {
+    alertType = 'warning';
+    heading = '⚠️ Import Completed with Issues';
+  } else if (data.imported === 0 && data.skipped > 0) {
+    alertType = 'danger';
+    heading = '❌ No Rows Imported';
+  }
+
+  let html = `
+    <div class="alert alert-${alertType} mb-3">
+      <h6 class="fw-bold mb-3">${heading}</h6>
+      <div class="row g-2">
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2 h-100">
+            <div class="small">Total Rows</div>
+            <strong>${escapeHtml(data.total)}</strong>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2 h-100">
+            <div class="small">Successfully Imported</div>
+            <strong>${escapeHtml(data.imported)}</strong>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2 h-100">
+            <div class="small">Not Imported</div>
+            <strong>${escapeHtml(data.skipped)}</strong>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2 h-100">
+            <div class="small">Warnings</div>
+            <strong>${escapeHtml(data.warnings.length)}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  if (data.successes.length) {
+    html += `
+      <div class="card border-success mb-3">
+        <div class="card-header text-bg-success fw-semibold">
+          ✅ Successfully Imported (${escapeHtml(data.successes.length)})
+        </div>
+        <div class="table-responsive" style="max-height: 320px; overflow: auto;">
+          <table class="table table-sm table-striped align-middle mb-0">
+            <thead class="sticky-top">
+              <tr>
+                <th>Excel Row</th>
+                <th>Employee ID</th>
+                <th>Full Name</th>
+                <th>Department</th>
+                <th>Position</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.successes.map(item => `
+                <tr>
+                  <td>${escapeHtml(item.row)}</td>
+                  <td>${escapeHtml(item.employee_id)}</td>
+                  <td>${escapeHtml(item.full_name)}</td>
+                  <td>${escapeHtml(item.department || '—')}</td>
+                  <td>${escapeHtml(item.position || '—')}</td>
+                  <td>${escapeHtml(item.status)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  if (data.errors.length) {
+    html += `
+      <div class="card border-danger mb-3">
+        <div class="card-header text-bg-danger fw-semibold">
+          ❌ Not Imported (${escapeHtml(data.errors.length)})
+        </div>
+        <div class="table-responsive" style="max-height: 320px; overflow: auto;">
+          <table class="table table-sm table-striped align-middle mb-0">
+            <thead class="sticky-top">
+              <tr>
+                <th>Excel Row</th>
+                <th>Employee ID</th>
+                <th>Full Name</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.errors.map(item => `
+                <tr>
+                  <td>${escapeHtml(item.row)}</td>
+                  <td>${escapeHtml(item.employee_id || '—')}</td>
+                  <td>${escapeHtml(item.full_name || '—')}</td>
+                  <td>${escapeHtml(item.reason)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  if (data.warnings.length) {
+    html += `
+      <div class="card border-warning mb-3">
+        <div class="card-header text-bg-warning fw-semibold">
+          ⚠️ Warnings (${escapeHtml(data.warnings.length)})
+        </div>
+        <div class="table-responsive" style="max-height: 260px; overflow: auto;">
+          <table class="table table-sm table-striped align-middle mb-0">
+            <thead class="sticky-top">
+              <tr>
+                <th>Excel Row</th>
+                <th>Record</th>
+                <th>Warning</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.warnings.map(item => `
+                <tr>
+                  <td>${escapeHtml(item.row)}</td>
+                  <td>${escapeHtml(item.employee_id || item.full_name || '—')}</td>
+                  <td>${escapeHtml(item.message)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  html += `
+    <button
+      type="button"
+      id="downloadEmployeeImportResultsBtn"
+      class="btn btn-outline-primary"
+    >
+      ⬇ Download Import Results
+    </button>
+  `;
+
+  const resultBox = $('importResult');
+
+  if (resultBox) {
+    resultBox.innerHTML = html;
+    $('downloadEmployeeImportResultsBtn')?.addEventListener(
+      'click',
+      downloadEmployeeImportResults
+    );
+  }
+
+  return data;
+}
+
+
 async function importEmployees(event) {
 
   event.preventDefault();
@@ -1347,123 +1741,26 @@ async function importEmployees(event) {
       result.results || {};
 
 
-    let html = `
-
-      <div class="alert alert-success">
-
-        <h6 class="fw-bold">
-          Import Completed
-        </h6>
-
-        <div>
-          Total rows:
-          <strong>
-            ${data.total || 0}
-          </strong>
-        </div>
-
-        <div>
-          Successfully imported:
-          <strong>
-            ${data.imported || 0}
-          </strong>
-        </div>
-
-        <div>
-          Skipped:
-          <strong>
-            ${data.skipped || 0}
-          </strong>
-        </div>
-
-      </div>
-
-    `;
-
-
-    if (
-      data.errors &&
-      data.errors.length
-    ) {
-
-      html += `
-
-        <div class="card border-danger">
-
-          <div class="card-header text-bg-danger">
-
-            Import Errors
-
-          </div>
-
-          <div class="card-body p-0">
-
-            <div class="table-responsive">
-
-              <table class="table table-sm mb-0">
-
-                <thead>
-
-                  <tr>
-                    <th>Row</th>
-                    <th>Employee ID</th>
-                    <th>Reason</th>
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  ${data.errors.map(error => `
-
-                    <tr>
-
-                      <td>
-                        ${escapeHtml(error.row)}
-                      </td>
-
-                      <td>
-                        ${escapeHtml(
-                          error.employee_id || '—'
-                        )}
-                      </td>
-
-                      <td>
-                        ${escapeHtml(error.reason)}
-                      </td>
-
-                    </tr>
-
-                  `).join('')}
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      `;
-    }
-
-
-    $('importResult').innerHTML =
-      html;
+    const normalizedResults =
+      renderEmployeeImportResults(data);
 
 
     fileInput.value = '';
 
 
-    await loadEmployees();
+    if (normalizedResults.imported > 0) {
+      await loadEmployees();
+    }
 
 
     showAlert(
-      `Employee import completed. ${data.imported || 0} employee(s) imported.`
+      'Employee import completed. ' +
+        normalizedResults.imported +
+        ' employee(s) imported.',
+      normalizedResults.skipped > 0
+        ? 'warning'
+        : 'success'
     );
-
 
   } catch (error) {
 
@@ -3475,6 +3772,19 @@ async function init() {
       );
   }
 
+  const requestedEmployeeId =
+    Number(
+      new URLSearchParams(window.location.search)
+        .get('view')
+    );
+
+  if (
+    Number.isInteger(requestedEmployeeId) &&
+    requestedEmployeeId > 0
+  ) {
+    await viewEmployee(requestedEmployeeId);
+  }
+
 
   // ---------------------------------------------
   // ADD EMPLOYEE
@@ -3530,6 +3840,8 @@ async function init() {
           if ($('importResult')) {
             $('importResult').innerHTML = '';
           }
+
+          lastEmployeeImportResults = null;
 
           importEmployeeModal.show();
 

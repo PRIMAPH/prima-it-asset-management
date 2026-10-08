@@ -390,6 +390,7 @@ app.post('/api/assets/:id/return', requireLogin, async (req, res) => {
       FROM assets
       WHERE id = ?
       LIMIT 1
+      FOR UPDATE
     `, [assetDbId]);
 
     if (!assetRows.length) {
@@ -403,6 +404,17 @@ app.post('/api/assets/:id/return', requireLogin, async (req, res) => {
     }
 
     const asset = assetRows[0];
+
+    if (asset.status !== 'Assigned') {
+
+      await connection.rollback();
+
+      return res.status(409).json({
+        message:
+          `${asset.asset_id} is currently ${asset.status} and cannot be returned.`
+      });
+
+    }
 
     // --------------------------------------------------------
     // GET ACTIVE ASSIGNMENT
@@ -418,6 +430,7 @@ app.post('/api/assets/:id/return', requireLogin, async (req, res) => {
         AND returned_at IS NULL
       ORDER BY id DESC
       LIMIT 1
+      FOR UPDATE
     `, [assetDbId]);
 
     if (!assignmentRows.length) {
@@ -436,7 +449,7 @@ app.post('/api/assets/:id/return', requireLogin, async (req, res) => {
     // CLOSE ACTIVE ASSIGNMENT
     // --------------------------------------------------------
 
-    await connection.query(`
+    const [assignmentUpdate] = await connection.query(`
       UPDATE asset_assignments
       SET
         returned_at = COALESCE(?, NOW()),
@@ -449,15 +462,36 @@ app.post('/api/assets/:id/return', requireLogin, async (req, res) => {
       assignment.id
     ]);
 
+    if (assignmentUpdate.affectedRows !== 1) {
+
+      await connection.rollback();
+
+      return res.status(409).json({
+        message: 'This asset assignment has already been returned.'
+      });
+
+    }
+
     // --------------------------------------------------------
     // UPDATE ASSET STATUS
     // --------------------------------------------------------
 
-    await connection.query(`
+    const [assetUpdate] = await connection.query(`
       UPDATE assets
       SET status = 'Available'
       WHERE id = ?
+        AND status = 'Assigned'
     `, [assetDbId]);
+
+    if (assetUpdate.affectedRows !== 1) {
+
+      await connection.rollback();
+
+      return res.status(409).json({
+        message: 'This asset is no longer assigned.'
+      });
+
+    }
 
     // --------------------------------------------------------
     // ASSET HISTORY
@@ -1710,7 +1744,8 @@ app.get('/api/assets', requireLogin, async (req, res) => {
         e.id AS custodian_id,
         e.full_name AS custodian_name,
         e.employee_id AS custodian_employee_id,
-        d.name AS department_name
+        d.name AS department_name,
+        aa.assigned_at
       FROM assets a
       LEFT JOIN asset_categories c ON c.id = a.category_id
       LEFT JOIN locations l ON l.id = a.location_id
@@ -1853,9 +1888,11 @@ app.get('/api/assets/:id', requireLogin, async (req, res) => {
         a.*,
         c.name AS category_name,
         l.name AS location_name,
+        e.id AS custodian_id,
         e.full_name AS custodian_name,
         e.employee_id AS custodian_employee_id,
-        d.name AS department_name
+        d.name AS department_name,
+        aa.assigned_at
       FROM assets a
       LEFT JOIN asset_categories c ON c.id = a.category_id
       LEFT JOIN locations l ON l.id = a.location_id
@@ -2356,9 +2393,27 @@ function normalizeDepartmentName(value) {
 departmentRows.forEach(dept => {
   departmentMap.set(
     normalizeDepartmentName(dept.name),
-    dept.id
+    {
+      id: dept.id,
+      name: dept.name
+    }
   );
 });
+
+const departmentAliases = new Map([
+  ['it department', 'IT DEPT'],
+  ['it dept', 'IT DEPT'],
+  ['information technology', 'IT DEPT'],
+  ['accounting department', 'Accounting'],
+  ['hr department', 'HR'],
+  ['human resources', 'HR'],
+  ['qa department', 'QA'],
+  ['quality assurance', 'QA'],
+  ['team leader department', 'Team Leader'],
+  ['customer service department', 'Customer Service'],
+  ['production department', 'Production'],
+  ['other department', 'Other']
+]);
 
     // ---------------------------------------------
     // IMPORT RESULTS
@@ -2368,7 +2423,9 @@ departmentRows.forEach(dept => {
       total: rows.length,
       imported: 0,
       skipped: 0,
-      errors: []
+      successes: [],
+      errors: [],
+      warnings: []
     };
 
     // ---------------------------------------------
@@ -2429,6 +2486,8 @@ departmentRows.forEach(dept => {
 
         results.errors.push({
           row: excelRow,
+          employee_id: employeeId,
+          full_name: fullName,
           reason: 'Employee ID is required.'
         });
 
@@ -2445,6 +2504,7 @@ departmentRows.forEach(dept => {
         results.errors.push({
           row: excelRow,
           employee_id: employeeId,
+          full_name: fullName,
           reason: 'Full Name is required.'
         });
 
@@ -2462,6 +2522,7 @@ departmentRows.forEach(dept => {
         results.errors.push({
           row: excelRow,
           employee_id: employeeId,
+          full_name: fullName,
           reason: 'Status must be active or inactive.'
         });
 
@@ -2473,25 +2534,49 @@ departmentRows.forEach(dept => {
       // ---------------------------------------------
 
       let departmentId = null;
+      let resolvedDepartmentName = '';
+      let departmentWarning = null;
 
       if (department) {
 
-     departmentId = departmentMap.get(
-  normalizeDepartmentName(department)
-);
+        const normalizedDepartment =
+          normalizeDepartmentName(department);
 
-        if (!departmentId) {
+        let resolvedDepartment =
+          departmentMap.get(normalizedDepartment);
+
+        if (!resolvedDepartment) {
+          const aliasTarget =
+            departmentAliases.get(normalizedDepartment);
+
+          if (aliasTarget) {
+            resolvedDepartment = departmentMap.get(
+              normalizeDepartmentName(aliasTarget)
+            );
+
+            if (resolvedDepartment) {
+              departmentWarning =
+                `Department "${department}" was mapped to "${resolvedDepartment.name}".`;
+            }
+          }
+        }
+
+        if (!resolvedDepartment) {
 
           results.skipped++;
 
           results.errors.push({
             row: excelRow,
             employee_id: employeeId,
+            full_name: fullName,
             reason: `Department "${department}" was not found.`
           });
 
           continue;
         }
+
+        departmentId = resolvedDepartment.id;
+        resolvedDepartmentName = resolvedDepartment.name;
       }
 
       // ---------------------------------------------
@@ -2515,6 +2600,7 @@ departmentRows.forEach(dept => {
         results.errors.push({
           row: excelRow,
           employee_id: employeeId,
+          full_name: fullName,
           reason: 'Employee ID already exists.'
         });
 
@@ -2525,30 +2611,61 @@ departmentRows.forEach(dept => {
       // INSERT EMPLOYEE
       // ---------------------------------------------
 
-      await connection.query(
-        `
-        INSERT INTO employees
-        (
-          employee_id,
-          full_name,
-          email,
-          department_id,
-          position_title,
-          status
-        )
-        VALUES (?, ?, ?, ?, ?, ?)
-        `,
-        [
-          employeeId,
-          fullName,
-          email || null,
-          departmentId,
-          position || null,
-          status
-        ]
-      );
+      try {
+        await connection.query(
+          `
+          INSERT INTO employees
+          (
+            employee_id,
+            full_name,
+            email,
+            department_id,
+            position_title,
+            status
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+          `,
+          [
+            employeeId,
+            fullName,
+            email || null,
+            departmentId,
+            position || null,
+            status
+          ]
+        );
+      } catch (rowError) {
+        results.skipped++;
+        results.errors.push({
+          row: excelRow,
+          employee_id: employeeId,
+          full_name: fullName,
+          reason: rowError.code === 'ER_DUP_ENTRY'
+            ? 'Employee ID or email already exists.'
+            : rowError.message || 'Unable to import employee.'
+        });
+        continue;
+      }
 
       results.imported++;
+
+      results.successes.push({
+        row: excelRow,
+        employee_id: employeeId,
+        full_name: fullName,
+        email,
+        department: resolvedDepartmentName,
+        position,
+        status
+      });
+
+      if (departmentWarning) {
+        results.warnings.push({
+          row: excelRow,
+          employee_id: employeeId,
+          message: departmentWarning
+        });
+      }
     }
 
     // ---------------------------------------------
@@ -2573,7 +2690,9 @@ departmentRows.forEach(dept => {
           filename: req.file.originalname,
           total: results.total,
           imported: results.imported,
-          skipped: results.skipped
+          skipped: results.skipped,
+          warnings: results.warnings.length,
+          errors: results.errors.length
         })
       ]
     );
@@ -2738,7 +2857,6 @@ app.get('/api/import/template/assets', requireAdmin, (req, res) => {
       'Purchase Cost',
       'Warranty Expiry',
       'Condition',
-      'Status',
       'Location',
       'Notes'
     ];
@@ -2756,8 +2874,7 @@ app.get('/api/import/template/assets', requireAdmin, (req, res) => {
         45000,
         '2029-01-15',
         'Good',
-        'Available',
-        'IT Department',
+        'IT Room',
         'Sample only'
       ]
     ]);
@@ -3176,6 +3293,9 @@ app.post(
       const categoryMap =
         new Map();
 
+      const categoryNameById =
+        new Map();
+
 
       categoryRows.forEach(
         category => {
@@ -3183,6 +3303,11 @@ app.post(
           categoryMap.set(
             normalizeLookup(category.name),
             category.id
+          );
+
+          categoryNameById.set(
+            Number(category.id),
+            category.name
           );
 
         }
@@ -3530,6 +3655,9 @@ app.post(
       const locationMap =
         new Map();
 
+      const locationNameById =
+        new Map();
+
 
       locationRows.forEach(
         location => {
@@ -3539,12 +3667,17 @@ app.post(
             location.id
           );
 
+          locationNameById.set(
+            Number(location.id),
+            location.name
+          );
+
         }
       );
 
 
       // ========================================================
-      // RESOLVE / CREATE LOCATION
+      // RESOLVE EXISTING LOCATION
       // ========================================================
 
       async function resolveLocation(
@@ -3584,15 +3717,20 @@ app.post(
           )
         ) {
 
+          const locationId =
+            locationMap.get(
+              normalized
+            );
+
           return {
 
             id:
-              locationMap.get(
-                normalized
-              ),
+              locationId,
 
             name:
-              original,
+              locationNameById.get(
+                Number(locationId)
+              ) || original,
 
             created:
               false
@@ -3601,106 +3739,9 @@ app.post(
 
         }
 
-
-        // ------------------------------------------------------
-        // Create missing location
-        // ------------------------------------------------------
-
-        try {
-
-          const [
-            result
-          ] =
-            await connection.query(
-              `
-              INSERT INTO locations
-                (name)
-              VALUES
-                (?)
-              `,
-              [original]
-            );
-
-
-          const newId =
-            result.insertId;
-
-
-          locationMap.set(
-            normalized,
-            newId
-          );
-
-
-          return {
-
-            id:
-              newId,
-
-            name:
-              original,
-
-            created:
-              true
-
-          };
-
-        } catch (error) {
-
-          // ----------------------------------------------------
-          // If another process created it at the same time,
-          // try loading it again.
-          // ----------------------------------------------------
-
-          const [
-            existingRows
-          ] =
-            await connection.query(
-              `
-              SELECT
-                id,
-                name
-              FROM locations
-              WHERE LOWER(TRIM(name)) = ?
-              LIMIT 1
-              `,
-              [normalized]
-            );
-
-
-          if (
-            existingRows.length
-          ) {
-
-            const location =
-              existingRows[0];
-
-
-            locationMap.set(
-              normalized,
-              location.id
-            );
-
-
-            return {
-
-              id:
-                location.id,
-
-              name:
-                location.name,
-
-              created:
-                false
-
-            };
-
-          }
-
-
-          throw error;
-
-        }
+        throw new Error(
+          `Location "${original}" was not found.`
+        );
 
       }
 
@@ -3714,18 +3755,6 @@ app.post(
         'Good',
         'Fair',
         'Damaged'
-      ];
-
-
-      const validStatuses = [
-        'Available',
-        'Assigned',
-        'For Repair',
-        'Repairing',
-        'Broken',
-        'Lost',
-        'Disposed',
-        'Retired'
       ];
 
 
@@ -3745,29 +3774,6 @@ app.post(
 
         const found =
           validConditions.find(
-            item =>
-              normalizeLookup(item) ===
-              normalized
-          );
-
-
-        return found || null;
-
-      }
-
-
-      function resolveStatus(
-        value
-      ) {
-
-        const normalized =
-          normalizeLookup(
-            value
-          );
-
-
-        const found =
-          validStatuses.find(
             item =>
               normalizeLookup(item) ===
               normalized
@@ -3960,6 +3966,9 @@ while (true) {
       const warnings =
         [];
 
+      const successes =
+        [];
+
 
       // ========================================================
       // DUPLICATES INSIDE THIS EXCEL FILE
@@ -4097,16 +4106,6 @@ while (true) {
             ).trim();
 
 
-          const rawStatus =
-            String(
-              getValue(
-                row,
-                'Status',
-                'status'
-              ) || ''
-            ).trim();
-
-
           const rawLocation =
             String(
               getValue(
@@ -4205,23 +4204,11 @@ while (true) {
 
 
           // ----------------------------------------------------
-          // STATUS
+          // INITIAL STATUS
           // ----------------------------------------------------
 
           const status =
-            resolveStatus(
-              rawStatus ||
-              'Available'
-            );
-
-
-          if (!status) {
-
-            throw new Error(
-              `Invalid Status "${rawStatus}". Allowed values: ${validStatuses.join(', ')}.`
-            );
-
-          }
+            'Available';
 
 
           // ----------------------------------------------------
@@ -4473,28 +4460,37 @@ while (true) {
           }
 
 
-          // ----------------------------------------------------
-          // LOCATION CREATED WARNING
-          // ----------------------------------------------------
+          successes.push({
 
-          if (
-            location.created
-          ) {
+            row:
+              excelRowNumber,
 
-            warnings.push({
+            asset_id:
+              assetId,
 
-              row:
-                excelRowNumber,
+            asset_name:
+              assetName,
 
-              asset_name:
-                assetName,
+            serial_number:
+              serialNumber,
 
-              message:
-                `Location "${location.name}" was automatically created.`
+            barcode,
 
-            });
+            category:
+              categoryNameById.get(
+                Number(category.id)
+              ) || category.name,
 
-          }
+            location:
+              location.id
+                ? locationNameById.get(
+                    Number(location.id)
+                  ) || location.name
+                : '',
+
+            status
+
+          });
 
 
           imported++;
@@ -4602,7 +4598,9 @@ while (true) {
 
         errors,
 
-        warnings
+        warnings,
+
+        successes
 
       });
 

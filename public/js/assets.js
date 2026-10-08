@@ -11,17 +11,14 @@ let currentUser = null;
 
 let addAssetModal;
 let importAssetModal;
+let lastAssetImportResults = null;
 let assignAssetsModal;
-let returnAssetModal;
 let assetLabelModal;
 
 // Custodian Management
 let custodianModal;
 let custodians = [];
 let selectedCustodian = null;
-
-// Return
-let returnAssetId = null;
 
 // Direct asset assignment (used by Scan -> Details -> Assign)
 let directAssignAssetId = null;
@@ -100,24 +97,6 @@ function showAssignAlert(message, type = 'danger') {
   box.innerHTML = `
     <div class="alert alert-${type} py-2 mb-3">
       ${escapeHtml(message)}
-    </div>
-  `;
-}
-
-function showReturnAlert(message, type = 'danger') {
-
-  const alert = $('returnAlert');
-
-  if (!alert) return;
-
-  if (!message) {
-    alert.innerHTML = '';
-    return;
-  }
-
-  alert.innerHTML = `
-    <div class="alert alert-${type} py-2 mb-3">
-      ${message}
     </div>
   `;
 }
@@ -1999,21 +1978,6 @@ $('detailsRepairBtn')
     );
 
   }
-
-}
-// ============================================================
-// RETURN ASSET FORM
-// ============================================================
-
-const returnAssetForm =
-  $('returnAssetForm');
-
-if (returnAssetForm) {
-
-  returnAssetForm.addEventListener(
-    'submit',
-    returnAsset
-  );
 
 }
 // ============================================================
@@ -5086,10 +5050,9 @@ $('assignAssetsForm')
 // ============================================================
 function openReturnModal(assetId) {
 
-  returnAssetId =
-    Number(assetId);
+  const assetDbId = Number(assetId);
 
-  if (!returnAssetId) {
+  if (!Number.isInteger(assetDbId) || assetDbId <= 0) {
 
     showAlert(
       'Invalid asset ID.',
@@ -5097,221 +5060,46 @@ function openReturnModal(assetId) {
     );
 
     return;
-
   }
 
   const asset =
     assets.find(
-      item =>
-        Number(item.id) ===
-        returnAssetId
+      item => Number(item.id) === assetDbId
     );
 
-  // ==========================================================
-  // ASSET ID
-  // ==========================================================
+  if (!asset) {
 
-  if ($('returnAssetId')) {
-
-    $('returnAssetId').textContent =
-      asset?.asset_id ||
-      `Asset ID ${returnAssetId}`;
-
-  }
-
-  // ==========================================================
-  // ASSET NAME
-  // ==========================================================
-
-  if ($('returnAssetName')) {
-
-    $('returnAssetName').textContent =
-      asset
-        ? `${asset.asset_id} - ${asset.asset_name}`
-        : `Asset ID ${returnAssetId}`;
-
-  }
-
-  // ==========================================================
-  // CUSTODIAN
-  // ==========================================================
-
-  if ($('returnCustodian')) {
-
-    $('returnCustodian').textContent =
-      asset?.custodian_name ||
-      asset?.custodian ||
-      asset?.employee_name ||
-      '—';
-
-  }
-
-  // ==========================================================
-  // DEPARTMENT
-  // ==========================================================
-
-  if ($('returnDepartment')) {
-
-    $('returnDepartment').textContent =
-      asset?.department_name ||
-      asset?.department ||
-      '—';
-
-  }
-
-  // ==========================================================
-  // RETURN DATE
-  // ==========================================================
-
-  if ($('returnDate')) {
-
-    $('returnDate').value =
-      getLocalDateTime();
-
-  }
-
-  // ==========================================================
-  // REMARKS
-  // ==========================================================
-
-  if ($('returnRemarks')) {
-
-    $('returnRemarks').value = '';
-
-  }
-
-  showReturnAlert('');
-
-  returnAssetModal =
-    bootstrap.Modal.getOrCreateInstance(
-      $('returnAssetModal')
-    );
-
-  returnAssetModal.show();
-
-}
-
-// ============================================================
-// RETURN ASSET
-// ============================================================
-async function returnAsset(event) {
-
-  event.preventDefault();
-
-  if (!returnAssetId) {
-
-    showReturnAlert(
-      'No asset selected.'
+    showAlert(
+      'Asset details are no longer available. Refresh the list and try again.',
+      'warning'
     );
 
     return;
-
   }
 
-  const returnedAt =
-    $('returnDate')?.value ||
-    getLocalDateTime();
-
-  const remarks =
-    String(
-      $('returnRemarks')?.value ||
-      ''
-    ).trim();
-
-  const button =
-  $('confirmReturnBtn');
-
-  if (button) {
-
-    button.disabled =
-      true;
-
-    button.innerHTML = `
-      <span
-        class="spinner-border spinner-border-sm me-1"
-      ></span>
-      Returning...
-    `;
-
-  }
-
-  try {
-
-    const response =
-      await fetch(
-        `/api/assets/${returnAssetId}/return`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type':
-              'application/json'
-          },
-          body:
-            JSON.stringify({
-              returned_at:
-                returnedAt,
-              remarks:
-                remarks
-            })
-        }
-      );
-
-    const data =
-      await response
-        .json()
-        .catch(() => ({}));
-
-    if (!response.ok) {
-
-      throw new Error(
-        data.message ||
-        'Unable to return asset.'
-      );
-
-    }
+  if (!window.PRIMAAssetReturn) {
 
     showAlert(
-      'Asset returned successfully.',
-      'success'
+      'Return Asset is not available. Please refresh the page.',
+      'danger'
     );
 
-    returnAssetId =
-      null;
-
-    if (returnAssetModal) {
-      returnAssetModal.hide();
-    }
-
-    await loadAssets();
-
-  } catch (error) {
-
-    console.error(
-      'returnAsset error:',
-      error
-    );
-
-    showReturnAlert(
-      error.message ||
-      'Unable to return asset.'
-    );
-
-  } finally {
-
-    if (button) {
-
-      button.disabled =
-        false;
-
-      button.innerHTML =
-  '↩️ Return Asset';
-
-    }
-
+    return;
   }
 
-}
+  window.PRIMAAssetReturn.open({
+    assetId: assetDbId,
+    asset,
+    onSuccess: async data => {
+      await loadAssets();
 
+      showAlert(
+        `Asset ${data.asset_id || asset.asset_id} returned successfully.`,
+        'success'
+      );
+    }
+  });
+}
 // ============================================================
 // SELECT ALL
 // ============================================================
@@ -5583,6 +5371,287 @@ function openImportModal() {
 // ============================================================
 // IMPORT ASSETS
 // ============================================================
+function assetImportResultFileDate() {
+  const now = new Date();
+
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0')
+  ].join('-');
+}
+
+
+function downloadAssetImportResults() {
+  if (!lastAssetImportResults) {
+    return;
+  }
+
+  if (typeof XLSX === 'undefined') {
+    showAlert('The Excel export library is not available.', 'danger');
+    return;
+  }
+
+  const data = lastAssetImportResults;
+  const workbook = XLSX.utils.book_new();
+
+  const summarySheet = XLSX.utils.aoa_to_sheet([
+    ['Import Summary', 'Count'],
+    ['Total Rows', data.total],
+    ['Successfully Imported', data.imported],
+    ['Not Imported', data.skipped],
+    ['Warnings', data.warnings.length]
+  ]);
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    summarySheet,
+    'Import Summary'
+  );
+
+  if (data.successes.length) {
+    const successSheet = XLSX.utils.json_to_sheet(
+      data.successes.map(item => ({
+        'Excel Row': item.row,
+        'Asset ID': item.asset_id,
+        'Asset Name': item.asset_name,
+        'Serial Number': item.serial_number,
+        'Barcode': item.barcode,
+        'Category': item.category,
+        'Location': item.location,
+        'Status': item.status
+      }))
+    );
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      successSheet,
+      'Successfully Imported'
+    );
+  }
+
+  if (data.errors.length) {
+    const errorSheet = XLSX.utils.json_to_sheet(
+      data.errors.map(item => ({
+        'Excel Row': item.row,
+        'Asset / Asset Name': item.asset_id || item.asset_name,
+        'Reason': item.reason
+      }))
+    );
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      errorSheet,
+      'Not Imported'
+    );
+  }
+
+  if (data.warnings.length) {
+    const warningSheet = XLSX.utils.json_to_sheet(
+      data.warnings.map(item => ({
+        'Excel Row': item.row,
+        'Record': item.asset_id || item.asset_name,
+        'Warning': item.message
+      }))
+    );
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      warningSheet,
+      'Warnings'
+    );
+  }
+
+  XLSX.writeFile(
+    workbook,
+    `asset-import-results-${assetImportResultFileDate()}.xlsx`
+  );
+}
+
+
+function renderAssetImportResults(rawData) {
+  const data = {
+    total: Number(rawData.total || 0),
+    imported: Number(rawData.imported || 0),
+    skipped: Number(rawData.skipped || 0),
+    successes: Array.isArray(rawData.successes)
+      ? rawData.successes
+      : [],
+    errors: Array.isArray(rawData.errors)
+      ? rawData.errors
+      : [],
+    warnings: Array.isArray(rawData.warnings)
+      ? rawData.warnings
+      : []
+  };
+
+  lastAssetImportResults = data;
+
+  let alertType = 'success';
+  let heading = '✅ Import Completed';
+
+  if (data.imported > 0 && data.skipped > 0) {
+    alertType = 'warning';
+    heading = '⚠️ Import Completed with Issues';
+  } else if (data.imported === 0 && data.skipped > 0) {
+    alertType = 'danger';
+    heading = '❌ No Rows Imported';
+  }
+
+  let html = `
+    <div class="alert alert-${alertType} mb-3">
+      <h6 class="fw-bold mb-3">${heading}</h6>
+      <div class="row g-2">
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2 h-100">
+            <div class="small">Total Rows</div>
+            <strong>${escapeHtml(data.total)}</strong>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2 h-100">
+            <div class="small">Successfully Imported</div>
+            <strong>${escapeHtml(data.imported)}</strong>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2 h-100">
+            <div class="small">Not Imported</div>
+            <strong>${escapeHtml(data.skipped)}</strong>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2 h-100">
+            <div class="small">Warnings</div>
+            <strong>${escapeHtml(data.warnings.length)}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  if (data.successes.length) {
+    html += `
+      <div class="card border-success mb-3">
+        <div class="card-header text-bg-success fw-semibold">
+          ✅ Successfully Imported (${escapeHtml(data.successes.length)})
+        </div>
+        <div class="table-responsive" style="max-height: 320px; overflow: auto;">
+          <table class="table table-sm table-striped align-middle mb-0">
+            <thead class="sticky-top">
+              <tr>
+                <th>Excel Row</th>
+                <th>Asset ID</th>
+                <th>Asset Name</th>
+                <th>Serial Number</th>
+                <th>Category</th>
+                <th>Location</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.successes.map(item => `
+                <tr>
+                  <td>${escapeHtml(item.row)}</td>
+                  <td>${escapeHtml(item.asset_id)}</td>
+                  <td>${escapeHtml(item.asset_name)}</td>
+                  <td>${escapeHtml(item.serial_number || '—')}</td>
+                  <td>${escapeHtml(item.category || '—')}</td>
+                  <td>${escapeHtml(item.location || '—')}</td>
+                  <td>${escapeHtml(item.status)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  if (data.errors.length) {
+    html += `
+      <div class="card border-danger mb-3">
+        <div class="card-header text-bg-danger fw-semibold">
+          ❌ Not Imported (${escapeHtml(data.errors.length)})
+        </div>
+        <div class="table-responsive" style="max-height: 320px; overflow: auto;">
+          <table class="table table-sm table-striped align-middle mb-0">
+            <thead class="sticky-top">
+              <tr>
+                <th>Excel Row</th>
+                <th>Asset / Asset Name</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.errors.map(item => `
+                <tr>
+                  <td>${escapeHtml(item.row)}</td>
+                  <td>${escapeHtml(item.asset_id || item.asset_name || '—')}</td>
+                  <td>${escapeHtml(item.reason)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  if (data.warnings.length) {
+    html += `
+      <div class="card border-warning mb-3">
+        <div class="card-header text-bg-warning fw-semibold">
+          ⚠️ Warnings (${escapeHtml(data.warnings.length)})
+        </div>
+        <div class="table-responsive" style="max-height: 260px; overflow: auto;">
+          <table class="table table-sm table-striped align-middle mb-0">
+            <thead class="sticky-top">
+              <tr>
+                <th>Excel Row</th>
+                <th>Record</th>
+                <th>Warning</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.warnings.map(item => `
+                <tr>
+                  <td>${escapeHtml(item.row)}</td>
+                  <td>${escapeHtml(item.asset_id || item.asset_name || '—')}</td>
+                  <td>${escapeHtml(item.message)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  html += `
+    <button
+      type="button"
+      id="downloadAssetImportResultsBtn"
+      class="btn btn-outline-primary"
+    >
+      ⬇ Download Import Results
+    </button>
+  `;
+
+  const resultBox = $('importResult');
+
+  if (resultBox) {
+    resultBox.innerHTML = html;
+    $('downloadAssetImportResultsBtn')?.addEventListener(
+      'click',
+      downloadAssetImportResults
+    );
+  }
+
+  return data;
+}
+
+
 async function importAssets(event) {
 
   event.preventDefault();
@@ -5658,206 +5727,26 @@ async function importAssets(event) {
 
     }
 
-    const imported =
-  Number(data.imported || 0);
-
-const skipped =
-  Number(data.skipped || 0);
-
-const total =
-  Number(data.total || 0);
-
-const errors =
-  Array.isArray(data.errors)
-    ? data.errors
-    : [];
-
-const warnings =
-  Array.isArray(data.warnings)
-    ? data.warnings
-    : [];
-    const result =
-  $('importResult');
-
-if (result) {
-
-  let html = `
-    <div class="alert alert-${
-      imported > 0
-        ? 'success'
-        : 'warning'
-    } mb-3">
-
-      <strong>Import completed</strong>
-
-      <div class="mt-2">
-        Total rows:
-        <strong>${total}</strong>
-      </div>
-
-      <div>
-        Imported:
-        <strong>${imported}</strong>
-      </div>
-
-      <div>
-        Skipped:
-        <strong>${skipped}</strong>
-      </div>
-
-    </div>
-  `;
+    const normalizedResults =
+      renderAssetImportResults(data);
 
 
-  // ==========================================================
-  // ERRORS
-  // ==========================================================
-
-  if (errors.length) {
-
-    html += `
-      <div class="card border-danger mb-3">
-
-        <div class="card-header bg-danger text-white">
-          <strong>
-            ${errors.length} Error(s)
-          </strong>
-        </div>
-
-        <div class="card-body p-0">
-
-          <div class="table-responsive">
-
-            <table class="table table-sm table-bordered mb-0">
-
-              <thead>
-                <tr>
-                  <th>Excel Row</th>
-                  <th>Asset</th>
-                  <th>Reason</th>
-                </tr>
-              </thead>
-
-              <tbody>
-    `;
-
-    errors.forEach(error => {
-
-      html += `
-        <tr>
-          <td>
-            ${error.row ?? ''}
-          </td>
-
-          <td>
-            ${escapeHtml(
-              error.asset_name || ''
-            )}
-          </td>
-
-          <td class="text-danger">
-            ${escapeHtml(
-              error.reason || 'Unknown error'
-            )}
-          </td>
-        </tr>
-      `;
-
-    });
-
-    html += `
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </div>
-
-      </div>
-    `;
-
-  }
+    input.value = '';
 
 
-  // ==========================================================
-  // WARNINGS
-  // ==========================================================
-
-  if (warnings.length) {
-
-    html += `
-      <div class="card border-warning mb-3">
-
-        <div class="card-header bg-warning">
-          <strong>
-            ${warnings.length} Warning(s)
-          </strong>
-        </div>
-
-        <div class="card-body p-0">
-
-          <div class="table-responsive">
-
-            <table class="table table-sm table-bordered mb-0">
-
-              <thead>
-                <tr>
-                  <th>Excel Row</th>
-                  <th>Asset</th>
-                  <th>Message</th>
-                </tr>
-              </thead>
-
-              <tbody>
-    `;
-
-    warnings.forEach(warning => {
-
-      html += `
-        <tr>
-          <td>
-            ${warning.row ?? ''}
-          </td>
-
-          <td>
-            ${escapeHtml(
-              warning.asset_name || ''
-            )}
-          </td>
-
-          <td class="text-warning-emphasis">
-            ${escapeHtml(
-              warning.message || ''
-            )}
-          </td>
-        </tr>
-      `;
-
-    });
-
-    html += `
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </div>
-
-      </div>
-    `;
-
-  }
+    if (normalizedResults.imported > 0) {
+      await loadAssets();
+    }
 
 
-  result.innerHTML =
-    html;
-
-}
-
-
-    await loadAssets();
+    showAlert(
+      'Asset import completed. ' +
+        normalizedResults.imported +
+        ' asset(s) imported.',
+      normalizedResults.skipped > 0
+        ? 'warning'
+        : 'success'
+    );
 
   } catch (error) {
 
@@ -5865,6 +5754,20 @@ if (result) {
       'importAssets error:',
       error
     );
+
+    const resultBox =
+      $('importResult');
+
+    if (resultBox) {
+      resultBox.innerHTML = `
+        <div class="alert alert-danger mb-0">
+          ${escapeHtml(
+            error.message ||
+            'Import failed.'
+          )}
+        </div>
+      `;
+    }
 
     showAlert(
       error.message ||
@@ -5885,21 +5788,6 @@ if (result) {
     }
 
   }
-
-}
-// ============================================================
-// IMPORT ASSET FORM
-// ============================================================
-
-const importAssetForm =
-  document.getElementById('importAssetForm');
-
-if (importAssetForm) {
-
-  importAssetForm.addEventListener(
-    'submit',
-    importAssets
-  );
 
 }
 // ============================================================
@@ -9030,6 +8918,26 @@ document.addEventListener(
 
           }
 
+          const importForm =
+            document.getElementById(
+              'importAssetForm'
+            );
+
+          if (importForm) {
+            importForm.reset();
+          }
+
+          const resultBox =
+            document.getElementById(
+              'importResult'
+            );
+
+          if (resultBox) {
+            resultBox.innerHTML = '';
+          }
+
+          lastAssetImportResults = null;
+
           importAssetModal =
             bootstrap.Modal.getOrCreateInstance(
               modalElement
@@ -9064,36 +8972,6 @@ document.addEventListener(
   }
 );
 
-// ============================================================
-// IMPORT ASSETS FORM SUBMIT
-// ============================================================
-
-const importAssetsForm =
-  document.getElementById('importAssetsForm');
-
-if (importAssetsForm) {
-
-  importAssetsForm.addEventListener(
-    'submit',
-    importAssets
-  );
-
-}
-// ============================================================
-// IMPORT ASSETS BUTTON
-// ============================================================
-
-const importAssetSubmitBtn =
-  document.getElementById('importAssetSubmitBtn');
-
-if (importAssetSubmitBtn) {
-
-  importAssetSubmitBtn.addEventListener(
-    'click',
-    importAssets
-  );
-
-}
 // ============================================================
 // GLOBAL WINDOW HANDLERS
 // ============================================================
