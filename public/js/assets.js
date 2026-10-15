@@ -46,6 +46,29 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
+// Shared image URLs use the existing backend /uploads/assets/<filename> paths.
+function getAssetImageUrl(path) {
+
+  if (!path) {
+    return '';
+  }
+
+  if (
+    String(path).startsWith('http://') ||
+    String(path).startsWith('https://') ||
+    String(path).startsWith('data:')
+  ) {
+    return String(path);
+  }
+
+  if (String(path).startsWith('/')) {
+    return String(path);
+  }
+
+  return `/${String(path)}`;
+
+}
+
 // ============================================================
 // STATUS BADGE
 // ============================================================
@@ -1115,32 +1138,6 @@ if (activeRepair) {
 
     </div>
   `;
-
-}
-
-// ----------------------------------------------------------
-// IMAGE URL HELPERS
-// ----------------------------------------------------------
-
-function getAssetImageUrl(path) {
-
-  if (!path) {
-    return '';
-  }
-
-  if (
-    String(path).startsWith('http://') ||
-    String(path).startsWith('https://') ||
-    String(path).startsWith('data:')
-  ) {
-    return String(path);
-  }
-
-  if (String(path).startsWith('/')) {
-    return String(path);
-  }
-
-  return `/${String(path)}`;
 
 }
 
@@ -2402,6 +2399,9 @@ function resetAssetImagePreview() {
 
     if (!preview) return;
 
+    preview.classList.remove('d-none');
+    preview.dataset.existingImage = '';
+
     preview.innerHTML = `
         <div class="text-muted py-5">
             <i class="bi bi-camera fs-1 d-block mb-2"></i>
@@ -2416,6 +2416,9 @@ function resetReceiptImagePreview() {
         document.getElementById('receiptImagePreview');
 
     if (!preview) return;
+
+    preview.classList.remove('d-none');
+    preview.dataset.existingImage = '';
 
     preview.innerHTML = `
         <div class="text-muted py-5">
@@ -3256,6 +3259,12 @@ function setupAssetImageControls() {
           assetInput.files?.[0] ||
           null;
 
+        if (!file) {
+          const preview = $('assetImagePreview');
+          showExistingAssetImage(preview?.dataset.existingImage, 'assetImagePreview');
+          return;
+        }
+
         assetImageRemoved =
           false;
 
@@ -3277,6 +3286,12 @@ function setupAssetImageControls() {
         const file =
           receiptInput.files?.[0] ||
           null;
+
+        if (!file) {
+          const preview = $('receiptImagePreview');
+          showExistingAssetImage(preview?.dataset.existingImage, 'receiptImagePreview');
+          return;
+        }
 
         receiptImageRemoved =
           false;
@@ -3350,35 +3365,40 @@ function setupAssetImageControls() {
 
 function showExistingAssetImage(imagePath, previewId) {
     const preview = document.getElementById(previewId);
-
     if (!preview) return;
 
-    if (!imagePath) {
-        preview.innerHTML = `
-            <div class="text-muted text-center py-4">
-                <i class="bi bi-image fs-1 d-block mb-2"></i>
-                No image
-            </div>
-        `;
-        return;
+    const isReceipt = previewId === 'receiptImagePreview';
+    const showPlaceholder = (message) => {
+        preview.innerHTML = '<div class="text-muted text-center py-4">' +
+            '<i class="bi ' + (isReceipt ? 'bi-receipt' : 'bi-camera') +
+            ' fs-1 d-block mb-2"></i>' + escapeHtml(message) + '</div>';
+    };
+
+    try {
+        preview.classList.remove('d-none');
+        preview.dataset.existingImage = imagePath || '';
+        const imageUrl = getAssetImageUrl(imagePath);
+        if (!imageUrl) {
+            showPlaceholder(isReceipt ? 'No receipt image' : 'No asset image');
+            return;
+        }
+
+        const image = document.createElement('img');
+        image.alt = isReceipt ? 'Existing receipt image' : 'Existing asset image';
+        image.className = 'img-fluid rounded border';
+        image.style.cssText = 'max-height:220px; object-fit:contain;';
+        image.onerror = () => {
+            // A stale request must not overwrite a newly selected preview.
+            if (preview.contains(image)) {
+                showPlaceholder('Image preview unavailable. Existing image is kept unless replaced or removed.');
+            }
+        };
+        preview.replaceChildren(image);
+        image.src = imageUrl;
+    } catch (error) {
+        console.warn('Unable to preview existing image:', error);
+        showPlaceholder('Image preview unavailable.');
     }
-
-    const imageUrl = getAssetImageUrl(imagePath);
-
-    preview.innerHTML = `
-        <div class="position-relative text-center">
-            <img
-                src="${escapeHtml(imageUrl)}"
-                alt="Asset image"
-                class="img-fluid rounded border"
-                style="max-height:220px; object-fit:contain;"
-                onerror="this.style.display='none';"
-            >
-            <div class="small text-muted mt-2">
-                Existing image
-            </div>
-        </div>
-    `;
 }
 
 // ============================================================
@@ -7354,49 +7374,16 @@ $('printCustodianBtn')
 
 function removeAssetImage() {
   assetImageRemoved = true;
-
-  const preview = document.getElementById('assetImagePreview');
-
-  if (preview) {
-    preview.src = '';
-    preview.classList.add('d-none');
-  }
-
-  const placeholder = document.getElementById('assetImagePlaceholder');
-
-  if (placeholder) {
-    placeholder.classList.remove('d-none');
-  }
-
-  const input = document.getElementById('assetImage');
-
-  if (input) {
-    input.value = '';
-  }
+  const input = $('assetImageFile');
+  if (input) input.value = '';
+  resetAssetImagePreview();
 }
-
 
 function removeReceiptImage() {
   receiptImageRemoved = true;
-
-  const preview = document.getElementById('receiptImagePreview');
-
-  if (preview) {
-    preview.src = '';
-    preview.classList.add('d-none');
-  }
-
-  const placeholder = document.getElementById('receiptImagePlaceholder');
-
-  if (placeholder) {
-    placeholder.classList.remove('d-none');
-  }
-
-  const input = document.getElementById('receiptImage');
-
-  if (input) {
-    input.value = '';
-  }
+  const input = $('receiptImageFile');
+  if (input) input.value = '';
+  resetReceiptImagePreview();
 }
 
 
