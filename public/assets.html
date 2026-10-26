@@ -122,217 +122,124 @@
 }
 
 
-/* =========================================================
-   INDIVIDUAL ASSET LABEL
-   ========================================================= */
+</style>
 
+<!-- Shared by the preview and the print window. -->
+<style id="assetLabelContentStyles">
 .asset-label {
-
   box-sizing: border-box;
-
   width: 100%;
+  min-width: 0;
   height: 55mm;
-
   border: 0.35mm solid #222;
-
   border-radius: 1.5mm;
-
-  padding: 2mm;
-
+  padding: .6mm .7mm;
+  margin: 0;
   display: flex;
-
   flex-direction: column;
-
   align-items: center;
-
-  justify-content: center;
-
+  justify-content: space-between;
+  gap: .15mm;
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.08;
   text-align: center;
-
+  color: #111;
   background: #fff;
-
   overflow: hidden;
-
   break-inside: avoid;
   page-break-inside: avoid;
+  --label-text-scale: 1;
 }
 
-
-/* =========================================================
-   COMPANY NAME
-   ========================================================= */
+.asset-label > * {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0;
+}
 
 .asset-label-company {
-
   width: 100%;
-
-  font-size: 7px;
-
+  font-size: 9px;
   font-weight: 700;
-
-  letter-spacing: .2px;
-
-  margin-bottom: .5mm;
-
-  white-space: nowrap;
-
-  overflow: hidden;
-
-  text-overflow: ellipsis;
+  line-height: 1.1;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
-
-
-/* =========================================================
-   TITLE
-   ========================================================= */
 
 .asset-label-title {
-
-  font-size: 6px;
-
-  color: #666;
-
-  margin-bottom: .5mm;
+  font-size: 8px;
+  font-weight: 600;
+  color: #333;
 }
 
-
-/* =========================================================
-   QR CODE
-   EXACTLY 20mm × 20mm
-   ========================================================= */
-
+/* The QR uses all height remaining after the wrapped text and barcode.
+   Its image includes a four-module quiet zone; object-fit keeps it square. */
 .asset-label-qr {
-
-  width: 20mm;
-  height: 20mm;
-
-  display: flex;
-
-  justify-content: center;
-  align-items: center;
-
-  margin: .5mm auto;
+  position: relative;
+  flex: 1 1 0;
+  width: 100%;
+  min-height: 0;
 }
 
-.asset-label-qr img {
-
-  width: 20mm !important;
-  height: 20mm !important;
-
-  max-width: 20mm !important;
-  max-height: 20mm !important;
-
+.asset-label-qr img,
+.asset-label-qr canvas {
+  position: absolute;
+  inset: 0;
   display: block;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
 }
-
-
-/* =========================================================
-   BARCODE
-   ========================================================= */
 
 .asset-label-barcode {
-
   width: 100%;
-
-  height: 8mm;
-
-  margin-top: .5mm;
-
+  height: 6mm;
   display: flex;
-
   justify-content: center;
-
   align-items: center;
-
-  overflow: hidden;
 }
 
 .asset-label-barcode svg {
-
   width: 48mm;
-
   max-width: 100%;
-
-  height: 7mm;
-
+  height: 6mm;
   display: block;
 }
 
-
-/* =========================================================
-   ASSET ID
-   ========================================================= */
+.asset-label-id,
+.asset-label-name,
+.asset-label-details {
+  width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 
 .asset-label-id {
-
-  width: 100%;
-
-  font-size: 8px;
-
+  font-size: calc(11.5px * var(--label-text-scale));
   font-weight: 800;
-
-  margin-top: .5mm;
-
-  line-height: 1.1;
-
-  white-space: nowrap;
-
-  overflow: hidden;
-
-  text-overflow: ellipsis;
 }
-
-
-/* =========================================================
-   ASSET NAME
-   ========================================================= */
 
 .asset-label-name {
-
-  width: 100%;
-
-  font-size: 6.5px;
-
+  font-size: calc(9.5px * var(--label-text-scale));
   font-weight: 600;
-
-  margin-top: .5mm;
-
-  line-height: 1.1;
-
-  white-space: nowrap;
-
-  overflow: hidden;
-
-  text-overflow: ellipsis;
 }
-
-
-/* =========================================================
-   DETAILS
-   ========================================================= */
 
 .asset-label-details {
-
-  width: 100%;
-
-  font-size: 5.5px;
-
-  color: #555;
-
-  margin-top: .3mm;
-
-  line-height: 1.15;
-
-  display: -webkit-box;
-
-  -webkit-line-clamp: 2;
-
-  -webkit-box-orient: vertical;
-
-  overflow: hidden;
+  font-size: calc(9.5px * var(--label-text-scale));
+  font-weight: 500;
+  color: #222;
 }
 
+.asset-label-name:empty {
+  display: none;
+}
+</style>
 
+<style>
 /* =========================================================
    LABEL TYPE OPTIONS
    ========================================================= */
@@ -667,161 +574,7 @@
   }
 
 
-  /* =======================================================
-     LABEL
-     ======================================================= */
-
-  .asset-label {
-
-    width: 100% !important;
-    height: 55mm !important;
-
-    box-sizing: border-box !important;
-
-    border:
-      0.35mm solid #222 !important;
-
-    border-radius:
-      1.5mm !important;
-
-    padding:
-      2mm !important;
-
-    margin:
-      0 !important;
-
-    background:
-      #ffffff !important;
-
-    overflow:
-      hidden !important;
-
-    page-break-inside:
-      avoid !important;
-
-    break-inside:
-      avoid !important;
-  }
-
-
-  /* =======================================================
-     QR CODE
-     ======================================================= */
-
-  .asset-label-qr {
-
-    width:
-      20mm !important;
-
-    height:
-      20mm !important;
-
-    margin:
-      .5mm auto !important;
-
-    display:
-      flex !important;
-
-    align-items:
-      center !important;
-
-    justify-content:
-      center !important;
-  }
-
-
-  .asset-label-qr img,
-  .asset-label-qr canvas {
-
-    width:
-      20mm !important;
-
-    height:
-      20mm !important;
-
-    max-width:
-      20mm !important;
-
-    max-height:
-      20mm !important;
-
-    display:
-      block !important;
-  }
-
-
-  /* =======================================================
-     BARCODE
-     ======================================================= */
-
-  .asset-label-barcode {
-
-    width:
-      100% !important;
-
-    height:
-      8mm !important;
-
-    margin-top:
-      .5mm !important;
-
-    display:
-      flex !important;
-
-    align-items:
-      center !important;
-
-    justify-content:
-      center !important;
-
-    overflow:
-      hidden !important;
-  }
-
-
-  .asset-label-barcode svg {
-
-    width:
-      48mm !important;
-
-    max-width:
-      100% !important;
-
-    height:
-      7mm !important;
-
-    display:
-      block !important;
-  }
-
-
-  /* =======================================================
-     LABEL TEXT
-     ======================================================= */
-
-  .asset-label-company {
-    font-size: 7px !important;
-  }
-
-
-  .asset-label-title {
-    font-size: 6px !important;
-  }
-
-
-  .asset-label-id {
-    font-size: 8px !important;
-  }
-
-
-  .asset-label-name {
-    font-size: 6.5px !important;
-  }
-
-
-  .asset-label-details {
-    font-size: 5.5px !important;
-  }
+  /* Label contents use the same sizes and wrapping as the screen preview. */
 
 }
 
@@ -2845,7 +2598,7 @@
 ========================================================= -->
 
 <script src="/js/asset-return.js?v=1"></script>
-<script src="/js/assets.js?v=12"></script>
+<script src="/js/assets.js?v=13"></script>
 
 
 <!-- =========================================================

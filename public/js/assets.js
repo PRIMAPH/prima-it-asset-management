@@ -5912,6 +5912,89 @@ async function logInventoryLabelReprint() {
   }
 }
 
+function fitLabelText(printArea) {
+  // The modal may still be hidden. Measure an off-screen copy at the existing
+  // preview dimensions, which are slightly narrower than the printed labels.
+  const measurement = printArea.cloneNode(true);
+  measurement.removeAttribute('id');
+  measurement.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+  measurement.style.cssText =
+    'position:absolute;left:-10000px;top:0;width:210mm;visibility:hidden;pointer-events:none;';
+  document.body.appendChild(measurement);
+
+  try {
+    const originals = printArea.querySelectorAll('.asset-label');
+    measurement.querySelectorAll('.asset-label').forEach((label, index) => {
+      const qr = label.querySelector('.asset-label-qr');
+      let reservedQrHeight = qr ? 25 * 96 / 25.4 : 0;
+      const fits = () => {
+        const style = getComputedStyle(label);
+        const children = Array.from(label.children).filter(el => getComputedStyle(el).display !== 'none');
+        const available = label.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+        const used = children.reduce((height, el) =>
+          height + (el === qr ? 0 : el.getBoundingClientRect().height), 0)
+          + Math.max(0, children.length - 1) * parseFloat(style.rowGap);
+        // Keep a useful QR size even with long asset names, IDs and details.
+        return used + reservedQrHeight <= available - 1;
+      };
+
+      if (fits()) return;
+      let low = 0.1;
+      let high = 1;
+      for (let pass = 0; pass < 2; pass++) {
+        for (let step = 0; step < 12; step++) {
+          const scale = (low + high) / 2;
+          label.style.setProperty('--label-text-scale', scale);
+          if (fits()) low = scale;
+          else high = scale;
+        }
+        if (!qr || low >= 0.75 || pass === 1) break;
+        // Exceptionally long fields need more room for readable text. Let the
+        // QR fall back toward 20mm before shrinking text below 75% of its size.
+        reservedQrHeight = 20 * 96 / 25.4;
+        low = 0.1;
+        high = 0.75;
+      }
+      originals[index].style.setProperty('--label-text-scale', low.toFixed(4));
+    });
+  } finally {
+    measurement.remove();
+  }
+}
+
+function generateLabelQr(qrEl, value) {
+  // Use the existing QRCode.js encoder and correction level. Draw its module
+  // matrix at integer pixel boundaries instead of enlarging a 120px bitmap.
+  const encoder = new QRCode(document.createElement('div'), {
+    text: value,
+    width: 600,
+    height: 600,
+    correctLevel: QRCode.CorrectLevel.M
+  });
+  const matrix = encoder._oQRCode;
+  const modules = matrix.getModuleCount();
+  const quietZone = 4;
+  const pixelsPerModule = Math.max(12, Math.ceil(600 / (modules + quietZone * 2)));
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = (modules + quietZone * 2) * pixelsPerModule;
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#fff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = '#000';
+  for (let row = 0; row < modules; row++) {
+    for (let column = 0; column < modules; column++) {
+      if (matrix.isDark(row, column)) {
+        context.fillRect((column + quietZone) * pixelsPerModule,
+          (row + quietZone) * pixelsPerModule, pixelsPerModule, pixelsPerModule);
+      }
+    }
+  }
+  const image = document.createElement('img');
+  image.alt = 'QR Code';
+  image.src = canvas.toDataURL('image/png');
+  qrEl.replaceChildren(image);
+}
+
 function renderLabelPreview(selectedAssets) {
 
   const container = $('labelPreviewContainer');
@@ -5986,6 +6069,7 @@ function renderLabelPreview(selectedAssets) {
   });
 
   container.appendChild(printArea);
+  fitLabelText(printArea);
 
   // ----------------------------------------------------------
   // GENERATE QR CODES + BARCODES AFTER DOM INSERTION
@@ -6002,14 +6086,7 @@ function renderLabelPreview(selectedAssets) {
 
       if (qrEl && typeof QRCode !== 'undefined') {
 
-        qrEl.innerHTML = '';
-
-        new QRCode(qrEl, {
-          text: asset.asset_id || String(asset.id),
-          width: 120,
-          height: 120,
-          correctLevel: QRCode.CorrectLevel.M
-        });
+        generateLabelQr(qrEl, asset.asset_id || String(asset.id));
       }
     }
 
@@ -6375,233 +6452,7 @@ function printLabels() {
   }
 
 
-  /* =========================================================
-     LABEL
-     ========================================================= */
-
-  .asset-label {
-
-    width: 100%;
-
-    height: 55mm;
-
-    margin: 0;
-
-    padding: 2mm;
-
-    border:
-      0.35mm solid #222;
-
-    border-radius:
-      1.5mm;
-
-    display: flex;
-
-    flex-direction: column;
-
-    justify-content: center;
-
-    align-items: center;
-
-    text-align: center;
-
-    background: #ffffff;
-
-    overflow: hidden;
-
-    page-break-inside: avoid;
-
-    break-inside: avoid;
-
-  }
-
-
-  /* =========================================================
-     COMPANY
-     ========================================================= */
-
-  .asset-label-company {
-
-    width: 100%;
-
-    font-size: 7px;
-
-    font-weight: 700;
-
-    letter-spacing: .2px;
-
-    margin-bottom: .5mm;
-
-    line-height: 1.15;
-
-    white-space: nowrap;
-
-    overflow: hidden;
-
-  }
-
-
-  /* =========================================================
-     TITLE
-     ========================================================= */
-
-  .asset-label-title {
-
-    font-size: 6px;
-
-    color: #666;
-
-    margin-bottom: .5mm;
-
-  }
-
-
-  /* =========================================================
-     QR
-     ========================================================= */
-
-  .asset-label-qr {
-
-    width: 20mm;
-
-    height: 20mm;
-
-    margin:
-      .5mm auto;
-
-    display: flex;
-
-    justify-content: center;
-
-    align-items: center;
-
-  }
-
-
-  .asset-label-qr img {
-
-    width:
-      20mm !important;
-
-    height:
-      20mm !important;
-
-    max-width:
-      20mm !important;
-
-    max-height:
-      20mm !important;
-
-    display: block;
-
-  }
-
-
-  /* =========================================================
-     BARCODE
-     ========================================================= */
-
-  .asset-label-barcode {
-
-    width: 100%;
-
-    height: 8mm;
-
-    margin-top: .5mm;
-
-    display: flex;
-
-    justify-content: center;
-
-    align-items: center;
-
-    overflow: hidden;
-
-  }
-
-
-  .asset-label-barcode svg {
-
-    width: 48mm;
-
-    max-width: 100%;
-
-    height: 7mm;
-
-    display: block;
-
-  }
-
-
-  /* =========================================================
-     ASSET TAG
-     ========================================================= */
-
-  .asset-label-id {
-
-    width: 100%;
-
-    font-size: 8px;
-
-    font-weight: 800;
-
-    margin-top: .5mm;
-
-    line-height: 1.1;
-
-    white-space: nowrap;
-
-    overflow: hidden;
-
-    text-overflow: ellipsis;
-
-  }
-
-
-  /* =========================================================
-     ASSET NAME
-     ========================================================= */
-
-  .asset-label-name {
-
-    width: 100%;
-
-    font-size: 6.5px;
-
-    font-weight: 600;
-
-    margin-top: .5mm;
-
-    line-height: 1.1;
-
-    white-space: nowrap;
-
-    overflow: hidden;
-
-    text-overflow: ellipsis;
-
-  }
-
-
-  /* =========================================================
-     BRAND / MODEL
-     ========================================================= */
-
-  .asset-label-details {
-
-    width: 100%;
-
-    font-size: 5.5px;
-
-    color: #555;
-
-    margin-top: .3mm;
-
-    line-height: 1.15;
-
-    overflow: hidden;
-
-  }
+  ${document.getElementById('assetLabelContentStyles').textContent}
 
 </style>
 

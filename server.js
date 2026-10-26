@@ -12771,43 +12771,7 @@ app.post(
         );
 
 
-        // Delete old file
-        if (asset.asset_image) {
-
-          const oldPath = path.join(
-            __dirname,
-            asset.asset_image.replace(/^\/+/, '')
-          );
-
-
-          console.log(
-            'Old asset image path:',
-            oldPath
-          );
-
-
-          if (fs.existsSync(oldPath)) {
-
-            try {
-
-              fs.unlinkSync(oldPath);
-
-              console.log(
-                'Old asset image deleted.'
-              );
-
-            } catch (err) {
-
-              console.warn(
-                'Unable to delete previous asset image:',
-                err.message
-              );
-
-            }
-
-          }
-
-        }
+        // Retain the stored file; only change this asset's image reference.
 
 
         updateFields.push(
@@ -12829,50 +12793,7 @@ app.post(
         );
 
 
-        // Delete physical file
-        if (asset.asset_image) {
-
-          const oldPath = path.join(
-            __dirname,
-            asset.asset_image.replace(/^\/+/, '')
-          );
-
-
-          console.log(
-            'Asset image file:',
-            oldPath
-          );
-
-
-          if (fs.existsSync(oldPath)) {
-
-            try {
-
-              fs.unlinkSync(oldPath);
-
-              console.log(
-                'Asset image physical file deleted.'
-              );
-
-            } catch (err) {
-
-              console.warn(
-                'Unable to delete asset image file:',
-                err.message
-              );
-
-            }
-
-          }
-          else {
-
-            console.log(
-              'Asset image physical file does not exist.'
-            );
-
-          }
-
-        }
+        // Retain the stored file; only change this asset's image reference.
 
 
         // ALWAYS clear database field
@@ -12895,42 +12816,7 @@ app.post(
         );
 
 
-        if (asset.receipt_image) {
-
-          const oldPath = path.join(
-            __dirname,
-            asset.receipt_image.replace(/^\/+/, '')
-          );
-
-
-          console.log(
-            'Old receipt image path:',
-            oldPath
-          );
-
-
-          if (fs.existsSync(oldPath)) {
-
-            try {
-
-              fs.unlinkSync(oldPath);
-
-              console.log(
-                'Old receipt image deleted.'
-              );
-
-            } catch (err) {
-
-              console.warn(
-                'Unable to delete previous receipt image:',
-                err.message
-              );
-
-            }
-
-          }
-
-        }
+        // Retain the stored file; only change this asset's image reference.
 
 
         updateFields.push(
@@ -12952,49 +12838,7 @@ app.post(
         );
 
 
-        if (asset.receipt_image) {
-
-          const oldPath = path.join(
-            __dirname,
-            asset.receipt_image.replace(/^\/+/, '')
-          );
-
-
-          console.log(
-            'Receipt image file:',
-            oldPath
-          );
-
-
-          if (fs.existsSync(oldPath)) {
-
-            try {
-
-              fs.unlinkSync(oldPath);
-
-              console.log(
-                'Receipt image physical file deleted.'
-              );
-
-            } catch (err) {
-
-              console.warn(
-                'Unable to delete receipt image file:',
-                err.message
-              );
-
-            }
-
-          }
-          else {
-
-            console.log(
-              'Receipt image physical file does not exist.'
-            );
-
-          }
-
-        }
+        // Retain the stored file; only change this asset's image reference.
 
 
         // ALWAYS clear database field
