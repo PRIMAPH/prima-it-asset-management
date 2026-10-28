@@ -7,6 +7,9 @@ let employees = [];
 let departments = [];
 let currentUser = null;
 
+let editingEmployeeId = null;
+let employeeSaving = false;
+let employeeLoading = false;
 let employeeModal;
 let importEmployeeModal;
 let lastEmployeeImportResults = null;
@@ -395,6 +398,7 @@ function renderEmployees() {
             View
 
           </button>
+          ${currentUser?.role === 'admin' ? `<button type="button" class="btn btn-sm btn-outline-primary edit-employee-btn" data-id="${employee.id}"><i class="bi bi-pencil-square me-1"></i>Edit</button>` : ''}
 
         </td>
 
@@ -402,6 +406,10 @@ function renderEmployees() {
 
     `).join('');
 
+
+  document.querySelectorAll('.edit-employee-btn').forEach(button => {
+    button.addEventListener('click', () => editEmployee(button.dataset.id));
+  });
 
   document
     .querySelectorAll('.view-employee-btn')
@@ -632,6 +640,7 @@ viewedEmployeeDbId = Number(id);
 
     showEmployeeViewAlert('');
 
+    $('editEmployeeBtn')?.classList.toggle('d-none', currentUser?.role !== 'admin');
     const deleteButton = $('deleteEmployeeBtn');
 
     if (deleteButton) {
@@ -1278,103 +1287,90 @@ function viewEmployeeAsset(assetId) {
 // SAVE EMPLOYEE
 // =====================================================
 
-async function saveEmployee(event) {
+function showEmployeeFormAlert(message) {
+  $('employeeFormAlert').innerHTML = message
+    ? '<div class="alert alert-danger" role="alert">' + escapeHtml(message) + '</div>' : '';
+}
 
-  event.preventDefault();
-
-
-  const form =
-    event.currentTarget;
-
-
-  const data =
-    Object.fromEntries(
-      new FormData(form).entries()
-    );
-
-
-  if (!data.employee_id.trim()) {
-
-    showAlert(
-      'Employee ID is required.',
-      'danger'
-    );
-
-    return;
-  }
-
-
-  if (!data.full_name.trim()) {
-
-    showAlert(
-      'Full Name is required.',
-      'danger'
-    );
-
-    return;
-  }
-
-
-  try {
-
-    const response =
-      await fetch('/api/employees', {
-
-        method: 'POST',
-
-        headers: {
-          'Content-Type':
-            'application/json'
-        },
-
-        body:
-          JSON.stringify(data)
-
-      });
-
-
-    const result =
-      await response
-        .json()
-        .catch(() => ({}));
-
-
-    if (!response.ok) {
-
-      showAlert(
-        result.message ||
-        'Unable to save employee.',
-        'danger'
-      );
-
-      return;
+function prepareEmployeeForm(employee = null) {
+  const form = $('employeeForm');
+  form.reset();
+  editingEmployeeId = employee ? Number(employee.id) : null;
+  showEmployeeFormAlert('');
+  $('employeeModalTitle').textContent = employee ? 'Edit Employee' : 'Add Employee';
+  $('saveEmployeeBtn').textContent = employee ? 'Save Changes' : 'Save Employee';
+  if (employee) {
+    for (const name of ['employee_id', 'full_name', 'email', 'department_id', 'position_title', 'status']) {
+      form.elements.namedItem(name).value = employee[name] ?? '';
     }
+  }
+}
 
-
-    form.reset();
-
-    employeeModal.hide();
-
-
-    showAlert(
-      `Employee ${result.employee_id} created successfully.`
-    );
-
-
-    await loadEmployees();
-
+async function editEmployee(id) {
+  if (currentUser?.role !== 'admin' || employeeSaving || employeeLoading) return;
+  employeeLoading = true;
+  try {
+    const response = await fetch('/api/employees/' + id);
+    const employee = await response.json();
+    if (!response.ok) throw new Error(employee.message || 'Unable to load employee.');
+    prepareEmployeeForm(employee);
+    const view = $('employeeViewModal');
+    if (view.classList.contains('show')) {
+      view.addEventListener('hidden.bs.modal', () => employeeModal.show(), { once: true });
+      employeeViewModal.hide();
+    } else {
+      employeeModal.show();
+    }
   } catch (error) {
+    if ($('employeeViewModal').classList.contains('show')) showEmployeeViewAlert(error.message);
+    else showAlert(error.message, 'danger');
+  } finally {
+    employeeLoading = false;
+  }
+}
 
-    console.error(
-      'Save employee error:',
-      error
-    );
-
-    showAlert(
-      error.message ||
-      'Unable to save employee.',
-      'danger'
-    );
+async function saveEmployee(event) {
+  event.preventDefault();
+  if (employeeSaving) return;
+  const editId = editingEmployeeId;
+  if (editId && currentUser?.role !== 'admin') {
+    showEmployeeFormAlert('Admin access required.');
+    return;
+  }
+  const form = event.currentTarget;
+  const data = Object.fromEntries(new FormData(form).entries());
+  if (!data.employee_id.trim() || !data.full_name.trim()) {
+    showEmployeeFormAlert('Employee ID and Full Name are required.');
+    return;
+  }
+  employeeSaving = true;
+  const button = $('saveEmployeeBtn');
+  button.disabled = true;
+  button.textContent = 'Saving...';
+  showEmployeeFormAlert('');
+  try {
+    const response = await fetch(editId ? '/api/employees/' + editId : '/api/employees', {
+      method: editId ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || 'Unable to save employee.');
+    employeeSaving = false;
+    employeeModal.hide();
+    prepareEmployeeForm();
+    showAlert(result.message || (editId ? 'Employee updated successfully.' : 'Employee created successfully.'));
+    try {
+      await loadEmployees();
+    } catch (error) {
+      showAlert('Employee saved, but the list could not refresh: ' + error.message, 'warning');
+    }
+  } catch (error) {
+    showEmployeeFormAlert(error.message || 'Unable to save employee.');
+  } finally {
+    employeeSaving = false;
+    button.disabled = false;
+    button.textContent = editingEmployeeId ? 'Save Changes' : 'Save Employee';
   }
 }
 
@@ -3755,6 +3751,11 @@ async function init() {
   }
 
 
+  $('employeeModal')?.addEventListener('hide.bs.modal', event => {
+    if (employeeSaving) event.preventDefault();
+  });
+  $('editEmployeeBtn')?.addEventListener('click', () => editEmployee(viewedEmployeeDbId));
+
   if ($('importEmployeeModal')) {
 
     importEmployeeModal =
@@ -3797,9 +3798,8 @@ async function init() {
         'click',
         () => {
 
-          if ($('employeeForm')) {
-            $('employeeForm').reset();
-          }
+          if (employeeSaving || employeeLoading) return;
+          prepareEmployeeForm();
 
           employeeModal.show();
 

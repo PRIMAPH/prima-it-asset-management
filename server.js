@@ -1564,8 +1564,85 @@ app.post('/api/employees', requireLogin, async (req, res) => {
 });
 
 // =====================================================
-// EMPLOYEES - DELETE
+// EMPLOYEES - UPDATE
 // =====================================================
+
+app.put('/api/employees/:id', requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  const body = req.body || {};
+  if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ message: 'Invalid employee ID.' });
+  if (['employee_id', 'full_name', 'email', 'position_title', 'status'].some(key => body[key] != null && typeof body[key] !== 'string')) {
+    return res.status(400).json({ message: 'Employee fields must contain text.' });
+  }
+  const employeeId = (body.employee_id || '').trim();
+  const fullName = (body.full_name || '').trim();
+  const email = (body.email || '').trim() || null;
+  const position = (body.position_title || '').trim() || null;
+  const status = (body.status || '').trim().toLowerCase();
+  const departmentId = body.department_id == null || body.department_id === '' ? null : Number(body.department_id);
+  if (!employeeId || !fullName) return res.status(400).json({ message: 'Employee ID and Full Name are required.' });
+  if (employeeId.length > 50 || fullName.length > 150 || email?.length > 150 || position?.length > 100) {
+    return res.status(400).json({ message: 'An employee field exceeds its maximum length.' });
+  }
+  if (!['active', 'inactive'].includes(status)) return res.status(400).json({ message: 'Status must be active or inactive.' });
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: 'Enter a valid email address.' });
+  if (departmentId !== null && (!Number.isSafeInteger(departmentId) || departmentId <= 0)) return res.status(400).json({ message: 'Invalid department.' });
+  let connection;
+  let transactionStarted = false;
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+    const [rows] = await connection.query('SELECT * FROM employees WHERE id = ? FOR UPDATE', [id]);
+    if (!rows.length) return res.status(404).json({ message: 'Employee not found.' });
+    const previous = rows[0];
+    const [duplicates] = await connection.query('SELECT id FROM employees WHERE employee_id = ? AND id <> ? LIMIT 1', [employeeId, id]);
+    if (duplicates.length) return res.status(409).json({ message: 'Employee ID already exists.' });
+    if (departmentId !== null) {
+      const [departments] = await connection.query('SELECT id FROM departments WHERE id = ?', [departmentId]);
+      if (!departments.length) return res.status(400).json({ message: 'Selected department was not found.' });
+    }
+    if (employeeId !== previous.employee_id) {
+      // Inspect actual business-key foreign keys, including custom tables.
+      const [dependencies] = await connection.query(`
+        SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE
+        WHERE REFERENCED_TABLE_SCHEMA = DATABASE()
+          AND REFERENCED_TABLE_NAME = 'employees' AND REFERENCED_COLUMN_NAME = 'employee_id'
+      `);
+      // The application also joins users on this value even if its FK is absent.
+      const [users] = await connection.query('SELECT id FROM users WHERE employee_id = ? LIMIT 1', [previous.employee_id]);
+      let linked = users.length > 0;
+      for (const dependency of dependencies) {
+        const [references] = await connection.query('SELECT 1 FROM ??.?? WHERE ?? = ? LIMIT 1',
+          [dependency.TABLE_SCHEMA, dependency.TABLE_NAME, dependency.COLUMN_NAME, previous.employee_id]);
+        linked = linked || references.length > 0;
+      }
+      if (linked) return res.status(409).json({ code: 'EMPLOYEE_ID_IN_USE', message: 'Employee ID cannot be changed because related records reference it. Keep the current Employee ID to save other changes.' });
+    }
+    // Never change the primary key or touch assignments/history.
+    await connection.query(`UPDATE employees SET employee_id = ?, full_name = ?, email = ?,
+      department_id = ?, position_title = ?, status = ? WHERE id = ?`,
+    [employeeId, fullName, email, departmentId, position, status, id]);
+    await connection.query(`INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details)
+      VALUES (?, 'UPDATE', 'employee', ?, ?)`, [req.session.user.id, String(id), JSON.stringify({
+      previous, updated: { employee_id: employeeId, full_name: fullName, email, department_id: departmentId, position_title: position, status }
+    })]);
+    await connection.commit();
+    transactionStarted = false;
+    return res.json({ ok: true, id, employee_id: employeeId, message: 'Employee updated successfully.' });
+  } catch (error) {
+    console.error('Update employee error:', error);
+    if (error.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: 'Employee ID already exists.' });
+    if (error.code === 'ER_ROW_IS_REFERENCED_2') return res.status(409).json({ message: 'Employee ID is referenced by related records and cannot be changed.' });
+    if (error.code === 'ER_NO_REFERENCED_ROW_2') return res.status(400).json({ message: 'A selected reference no longer exists. Refresh and try again.' });
+    return res.status(500).json({ message: 'Unable to update employee.' });
+  } finally {
+    if (connection) {
+      try { if (transactionStarted) await connection.rollback(); }
+      finally { connection.release(); }
+    }
+  }
+});
 
 app.delete('/api/employees/:id', requireAdmin, async (req, res) => {
   const employeeId = Number(req.params.id);
