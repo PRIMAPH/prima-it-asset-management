@@ -19,6 +19,11 @@ let selectedEmployee = null;
 let selectedEmployeeAssets = [];
 
 
+let employeeDeleteModal;
+let employeeDeleteSuccessModal;
+let employeeToDelete = null;
+let employeeDeleting = false;
+let employeeDeleteLoading = false;
 let employeeViewModal = null;
 let selectedEmployeeForView = null;
 let viewedEmployeeDbId = null;
@@ -398,7 +403,8 @@ function renderEmployees() {
             View
 
           </button>
-          ${currentUser?.role === 'admin' ? `<button type="button" class="btn btn-sm btn-outline-primary edit-employee-btn" data-id="${employee.id}"><i class="bi bi-pencil-square me-1"></i>Edit</button>` : ''}
+          ${currentUser?.role === 'admin' ? `<button type="button" class="btn btn-sm btn-outline-primary edit-employee-btn" data-id="${employee.id}"><i class="bi bi-pencil-square me-1"></i>Edit</button>
+            <button type="button" class="btn btn-sm btn-danger delete-employee-btn" data-id="${employee.id}"><i class="bi bi-trash me-1"></i>Delete</button>` : ''}
 
         </td>
 
@@ -406,6 +412,10 @@ function renderEmployees() {
 
     `).join('');
 
+
+  document.querySelectorAll('.delete-employee-btn').forEach(button => {
+    button.addEventListener('click', () => deleteEmployee(button.dataset.id));
+  });
 
   document.querySelectorAll('.edit-employee-btn').forEach(button => {
     button.addEventListener('click', () => editEmployee(button.dataset.id));
@@ -501,76 +511,74 @@ function openEmployeeAssetReturn(
 }
 
 
-async function deleteEmployee() {
-  const employee = selectedEmployeeForView?.employee;
-  const assignedAssets = selectedEmployeeForView?.assets || [];
-  const employeeId = Number(employee?.id || viewedEmployeeDbId);
+function showEmployeeDeleteAlert(message) {
+  $('employeeDeleteAlert').textContent = message;
+  $('employeeDeleteAlert').classList.toggle('d-none', !message);
+}
 
-  if (!Number.isInteger(employeeId) || employeeId <= 0) {
-    showEmployeeViewAlert('Invalid employee ID.');
-    return;
-  }
-
-  if (assignedAssets.length) {
-    showEmployeeViewAlert(
-      `Return all ${assignedAssets.length} assigned asset${assignedAssets.length === 1 ? '' : 's'} before deleting this employee.`,
-      'warning'
-    );
-    return;
-  }
-
-  const employeeLabel =
-    employee?.employee_id || employee?.full_name || `Employee ${employeeId}`;
-
-  if (!window.confirm(
-    `Delete ${employeeLabel}? This permanently removes the employee and their related records.`
-  )) {
-    return;
-  }
-
-  const button = $('deleteEmployeeBtn');
-  const originalHtml = button?.innerHTML || '';
-
+async function deleteEmployee(id = viewedEmployeeDbId) {
+  if (currentUser?.role !== 'admin' || employeeDeleting || employeeDeleteLoading) return;
+  employeeDeleteLoading = true;
   try {
-    if (button) {
-      button.disabled = true;
-      button.innerHTML = `
-        <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
-        Deleting...
-      `;
+    const [employeeResponse, assetsResponse] = await Promise.all([
+      fetch('/api/employees/' + id), fetch('/api/employees/' + id + '/assets')
+    ]);
+    const employee = await employeeResponse.json();
+    const assets = await assetsResponse.json();
+    if (!employeeResponse.ok || !assetsResponse.ok) throw new Error(employee.message || assets.message || 'Unable to load employee.');
+    employeeToDelete = employee;
+    $('deleteEmployeeName').textContent = employee.full_name;
+    $('deleteEmployeeAssetCount').textContent = assets.length;
+    const exceptional = assets.filter(asset => !['Assigned', 'Available'].includes(asset.status));
+    $('deleteEmployeeStatusNote').textContent = exceptional.length
+      ? 'These assets will retain their current statuses: ' + exceptional.map(asset => asset.asset_id + ' (' + asset.status + ')').join(', ') + '.' : '';
+    showEmployeeDeleteAlert('');
+    if ($('employeeViewModal').classList.contains('show')) {
+      $('employeeViewModal').addEventListener('hidden.bs.modal', () => employeeDeleteModal.show(), { once: true });
+      employeeViewModal.hide();
+    } else {
+      employeeDeleteModal.show();
     }
-
-    showEmployeeViewAlert('');
-
-    const response = await fetch(`/api/employees/${employeeId}`, {
-      method: 'DELETE'
-    });
-
-    const result = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(result.message || 'Unable to delete employee.');
-    }
-
-    employeeViewModal?.hide();
-    selectedEmployeeForView = null;
-    viewedEmployeeDbId = null;
-
-    await loadEmployees();
-    showAlert(result.message || 'Employee deleted successfully.', 'success');
   } catch (error) {
-    showEmployeeViewAlert(
-      error.message || 'Unable to delete employee.',
-      'danger'
-    );
-
-    if (button) {
-      button.disabled = false;
-      button.innerHTML = originalHtml;
-    }
+    if ($('employeeViewModal').classList.contains('show')) showEmployeeViewAlert(error.message);
+    else showAlert(error.message, 'danger');
+  } finally {
+    employeeDeleteLoading = false;
   }
 }
 
+async function confirmDeleteEmployee() {
+  if (currentUser?.role !== 'admin' || !employeeToDelete || employeeDeleting) return;
+  employeeDeleting = true;
+  const button = $('confirmDeleteEmployeeBtn');
+  button.disabled = true;
+  button.textContent = 'Deleting...';
+  showEmployeeDeleteAlert('');
+  try {
+    const response = await fetch('/api/employees/' + employeeToDelete.id, { method: 'DELETE' });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || 'Unable to delete employee.');
+    selectedEmployeeForView = null;
+    selectedEmployee = null;
+    selectedEmployeeAssets = [];
+    viewedEmployeeDbId = null;
+    employeeToDelete = null;
+    $('employeeDeleteSuccessMessage').textContent = result.message;
+    $('employeeDeleteSuccessNote').textContent = result.preserved_statuses?.length
+      ? 'Status retained for: ' + result.preserved_statuses.map(asset => asset.asset_id + ' (' + asset.status + ')').join(', ') + '. These assets are not Available.' : '';
+    employeeDeleting = false;
+    $('employeeDeleteModal').addEventListener('hidden.bs.modal', () => employeeDeleteSuccessModal.show(), { once: true });
+    employeeDeleteModal.hide();
+    try { await loadEmployees(); }
+    catch (error) { showAlert('Employee deleted, but the list could not refresh: ' + error.message, 'warning'); }
+  } catch (error) {
+    showEmployeeDeleteAlert(error.message);
+  } finally {
+    employeeDeleting = false;
+    button.disabled = false;
+    button.innerHTML = '<i class="bi bi-trash me-1"></i>Delete &amp; Return Assets';
+  }
+}
 
 
 async function viewEmployee(id) {
@@ -647,10 +655,8 @@ viewedEmployeeDbId = Number(id);
       const canDelete = currentUser?.role === 'admin';
 
       deleteButton.classList.toggle('d-none', !canDelete);
-      deleteButton.disabled = !canDelete || assignedAssets.length > 0;
-      deleteButton.title = assignedAssets.length
-        ? 'Return all assigned assets before deleting this employee.'
-        : 'Delete this employee permanently.';
+      deleteButton.disabled = !canDelete;
+      deleteButton.title = 'Delete this employee and return assigned assets.';
     }
 
 
@@ -3754,6 +3760,12 @@ async function init() {
   $('employeeModal')?.addEventListener('hide.bs.modal', event => {
     if (employeeSaving) event.preventDefault();
   });
+  employeeDeleteModal = new bootstrap.Modal($('employeeDeleteModal'));
+  employeeDeleteSuccessModal = new bootstrap.Modal($('employeeDeleteSuccessModal'));
+  $('employeeDeleteModal').addEventListener('hide.bs.modal', event => {
+    if (employeeDeleting) event.preventDefault();
+  });
+  $('confirmDeleteEmployeeBtn').addEventListener('click', confirmDeleteEmployee);
   $('editEmployeeBtn')?.addEventListener('click', () => editEmployee(viewedEmployeeDbId));
 
   if ($('importEmployeeModal')) {
@@ -3900,7 +3912,7 @@ async function init() {
     $('deleteEmployeeBtn')
       .addEventListener(
         'click',
-        deleteEmployee
+        () => deleteEmployee(viewedEmployeeDbId)
       );
   }
 

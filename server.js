@@ -12,6 +12,8 @@ const bcrypt = require('bcryptjs');
 const mysql = require('mysql2/promise'); 
 const XLSX = require('xlsx');
 const nodemailer = require('nodemailer');
+const { returnAssignment } = require('./services/asset-return');
+const { archiveEmployee } = require('./services/employee-deletion');
 
 
 const upload = multer({
@@ -56,6 +58,19 @@ const sessionMiddleware = session({
 });
 
 app.use(sessionMiddleware);
+app.use(async (req, res, next) => {
+  if (!req.session.user) return next();
+  try {
+    const [accounts] = await pool.query('SELECT status FROM users WHERE id = ? LIMIT 1', [req.session.user.id]);
+    if (!accounts.length || accounts[0].status !== 'active') {
+      return req.session.destroy(() => sendLoginRequired(req, res));
+    }
+    next();
+  } catch (error) {
+    console.error('Session account check failed:', error);
+    res.status(503).json({ message: 'Unable to verify account access. Please try again.' });
+  }
+});
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(
   '/uploads',
@@ -235,7 +250,7 @@ app.post('/api/users', requireAdmin, async (req, res) => {
 
     if (employeeId) {
       const [employeeRows] = await connection.query(
-        'SELECT employee_id FROM employees WHERE employee_id = ? LIMIT 1',
+        'SELECT employee_id FROM employees WHERE employee_id = ? AND deleted_at IS NULL LIMIT 1',
         [employeeId]
       );
 
@@ -259,6 +274,17 @@ app.post('/api/users', requireAdmin, async (req, res) => {
 
     await connection.beginTransaction();
     transactionStarted = true;
+
+    // Serialize account creation with employee archival.
+    if (employeeId) {
+      const [employees] = await connection.query(
+        'SELECT id FROM employees WHERE employee_id = ? AND deleted_at IS NULL LIMIT 1 FOR UPDATE', [employeeId]);
+      if (!employees.length) {
+        await connection.rollback();
+        transactionStarted = false;
+        return res.status(409).json({ message: 'The selected employee is no longer available.' });
+      }
+    }
 
     const [result] = await connection.query(`
       INSERT INTO users
@@ -449,106 +475,7 @@ app.post('/api/assets/:id/return', requireLogin, async (req, res) => {
     // CLOSE ACTIVE ASSIGNMENT
     // --------------------------------------------------------
 
-    const [assignmentUpdate] = await connection.query(`
-      UPDATE asset_assignments
-      SET
-        returned_at = COALESCE(?, NOW()),
-        return_remarks = ?
-      WHERE id = ?
-        AND returned_at IS NULL
-    `, [
-      returnedAt,
-      remarks,
-      assignment.id
-    ]);
-
-    if (assignmentUpdate.affectedRows !== 1) {
-
-      await connection.rollback();
-
-      return res.status(409).json({
-        message: 'This asset assignment has already been returned.'
-      });
-
-    }
-
-    // --------------------------------------------------------
-    // UPDATE ASSET STATUS
-    // --------------------------------------------------------
-
-    const [assetUpdate] = await connection.query(`
-      UPDATE assets
-      SET status = 'Available'
-      WHERE id = ?
-        AND status = 'Assigned'
-    `, [assetDbId]);
-
-    if (assetUpdate.affectedRows !== 1) {
-
-      await connection.rollback();
-
-      return res.status(409).json({
-        message: 'This asset is no longer assigned.'
-      });
-
-    }
-
-    // --------------------------------------------------------
-    // ASSET HISTORY
-    // --------------------------------------------------------
-
-    await connection.query(`
-      INSERT INTO asset_history
-      (
-        asset_id,
-        action,
-        from_status,
-        to_status,
-        from_employee_id,
-        to_employee_id,
-        remarks,
-        performed_by
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      assetDbId,
-      'Asset Returned',
-      asset.status,
-      'Available',
-      assignment.employee_id,
-      null,
-      remarks,
-      req.session.user.id
-    ]);
-
-    // --------------------------------------------------------
-    // AUDIT LOG
-    // --------------------------------------------------------
-
-    await connection.query(`
-      INSERT INTO audit_logs
-      (
-        user_id,
-        action,
-        entity_type,
-        entity_id,
-        details
-      )
-      VALUES (?, ?, ?, ?, ?)
-    `, [
-      req.session.user.id,
-      'RETURN',
-      'asset',
-      String(assetDbId),
-      JSON.stringify({
-        asset_id: asset.asset_id,
-        asset_name: asset.asset_name,
-        assignment_id: assignment.id,
-        employee_id: assignment.employee_id,
-        returned_at: returnedAt || 'NOW()',
-        remarks: remarks
-      })
-    ]);
+    await returnAssignment(connection, { asset, assignment, userId: req.session.user.id, remarks, returnedAt });
 
     await connection.commit();
 
@@ -570,8 +497,8 @@ app.post('/api/assets/:id/return', requireLogin, async (req, res) => {
       error
     );
 
-    return res.status(500).json({
-      message: 'Unable to return asset.',
+    return res.status(error.status || 500).json({
+      message: error.status ? error.message : 'Unable to return asset.',
       error: error.message
     });
 
@@ -799,7 +726,7 @@ app.get('/api/employees', requireLogin, async (req, res) => {
       FROM employees e
       LEFT JOIN departments d
         ON d.id = e.department_id
-      WHERE 1=1
+      WHERE e.deleted_at IS NULL
     `;
 
     const params = [];
@@ -920,7 +847,7 @@ app.get('/api/custodians', requireLogin, async (req, res) => {
       LEFT JOIN departments d
         ON d.id = e.department_id
 
-      WHERE e.status = 'active'
+      WHERE e.status = 'active' AND e.deleted_at IS NULL
     `;
 
     const params = [];
@@ -1596,6 +1523,7 @@ app.put('/api/employees/:id', requireAdmin, async (req, res) => {
     const [rows] = await connection.query('SELECT * FROM employees WHERE id = ? FOR UPDATE', [id]);
     if (!rows.length) return res.status(404).json({ message: 'Employee not found.' });
     const previous = rows[0];
+    if (previous.deleted_at) return res.status(409).json({ message: 'Deleted employees cannot be edited.' });
     const [duplicates] = await connection.query('SELECT id FROM employees WHERE employee_id = ? AND id <> ? LIMIT 1', [employeeId, id]);
     if (duplicates.length) return res.status(409).json({ message: 'Employee ID already exists.' });
     if (departmentId !== null) {
@@ -1644,144 +1572,20 @@ app.put('/api/employees/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// EMPLOYEES - DELETE (archive and return assets atomically)
 app.delete('/api/employees/:id', requireAdmin, async (req, res) => {
-  const employeeId = Number(req.params.id);
-
-  if (!Number.isInteger(employeeId) || employeeId <= 0) {
-    return res.status(400).json({ message: 'Invalid employee ID.' });
-  }
-
-  const connection = await pool.getConnection();
-  let transactionStarted = false;
-
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ message: 'Invalid employee ID.' });
   try {
-    await connection.beginTransaction();
-    transactionStarted = true;
-
-    const [employeeRows] = await connection.query(`
-      SELECT
-        id,
-        employee_id,
-        full_name,
-        email,
-        status
-      FROM employees
-      WHERE id = ?
-      LIMIT 1
-      FOR UPDATE
-    `, [employeeId]);
-
-    if (!employeeRows.length) {
-      await connection.rollback();
-      transactionStarted = false;
-
-      return res.status(404).json({ message: 'Employee not found.' });
-    }
-
-    const employee = employeeRows[0];
-
-    const [assignedAssets] = await connection.query(`
-      SELECT
-        a.id,
-        a.asset_id,
-        a.asset_name
-      FROM asset_assignments aa
-      INNER JOIN assets a
-        ON a.id = aa.asset_id
-      WHERE aa.employee_id = ?
-        AND aa.returned_at IS NULL
-      ORDER BY a.asset_id ASC
-      FOR UPDATE
-    `, [employeeId]);
-
-    if (assignedAssets.length) {
-      await connection.rollback();
-      transactionStarted = false;
-
-      return res.status(409).json({
-        code: 'EMPLOYEE_HAS_ASSIGNED_ASSETS',
-        message: `Return all ${assignedAssets.length} assigned asset${assignedAssets.length === 1 ? '' : 's'} before deleting this employee.`,
-        assigned_assets: assignedAssets
-      });
-    }
-
-    // Preserve repair records while removing references to the employee.
-    await connection.query(
-      'UPDATE asset_repairs SET custodian_id = NULL WHERE custodian_id = ?',
-      [employeeId]
-    );
-    await connection.query(
-      'UPDATE asset_repairs SET technician_id = NULL WHERE technician_id = ?',
-      [employeeId]
-    );
-
-    // These records belong to the employee and otherwise restrict deletion.
-    // Child rows are removed by their configured cascading foreign keys.
-    await connection.query(
-      'DELETE FROM employee_clearances WHERE employee_id = ?',
-      [employeeId]
-    );
-    await connection.query(
-      'DELETE FROM custodian_forms WHERE employee_id = ?',
-      [employeeId]
-    );
-    await connection.query(
-      'DELETE FROM asset_assignments WHERE employee_id = ?',
-      [employeeId]
-    );
-
-    const [deleteResult] = await connection.query(
-      'DELETE FROM employees WHERE id = ?',
-      [employeeId]
-    );
-
-    if (!deleteResult.affectedRows) {
-      throw new Error('Employee could not be deleted.');
-    }
-
-    await connection.query(`
-      INSERT INTO audit_logs
-        (user_id, action, entity_type, entity_id, details)
-      VALUES (?, 'DELETE', 'employee', ?, ?)
-    `, [
-      req.session.user.id,
-      String(employeeId),
-      JSON.stringify({
-        employee_id: employee.employee_id,
-        full_name: employee.full_name,
-        email: employee.email || null,
-        status: employee.status
-      })
-    ]);
-
-    await connection.commit();
-    transactionStarted = false;
-
-    return res.json({
-      ok: true,
-      message: `Employee ${employee.employee_id} deleted successfully.`
-    });
+    return res.json(await archiveEmployee(pool, id, req.session.user.id));
   } catch (error) {
-    if (transactionStarted) {
-      try { await connection.rollback(); } catch (_) {}
-    }
-
     console.error('DELETE EMPLOYEE ERROR:', error);
-
-    if (
-      error.code === 'ER_ROW_IS_REFERENCED' ||
-      error.code === 'ER_ROW_IS_REFERENCED_2'
-    ) {
-      return res.status(409).json({
-        message: 'This employee still has related system records and cannot be deleted.'
-      });
-    }
-
-    return res.status(500).json({
-      message: 'Unable to delete employee.'
+    const conflict = ['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT'].includes(error.code);
+    return res.status(error.status || (conflict ? 409 : 500)).json({
+      message: error.status ? error.message : conflict
+        ? 'Employee or assets changed during deletion. Refresh and try again.'
+        : 'Unable to delete employee. No changes were saved.'
     });
-  } finally {
-    connection.release();
   }
 });
 
@@ -4784,6 +4588,8 @@ app.post(
       // CHECK EMPLOYEE
       // ----------------------------------------
 
+      await connection.beginTransaction();
+
       const [employeeRows] = await connection.query(
         `
         SELECT
@@ -4793,13 +4599,15 @@ app.post(
           department_id,
           status
         FROM employees
-        WHERE id = ?
+        WHERE id = ? AND deleted_at IS NULL
         LIMIT 1
+        FOR UPDATE
         `,
         [employee_id]
       );
 
       if (employeeRows.length === 0) {
+        await connection.rollback();
         return res.status(404).json({
           message: 'Employee not found.'
         });
@@ -4808,16 +4616,11 @@ app.post(
       const employee = employeeRows[0];
 
       if (employee.status !== 'active') {
+        await connection.rollback();
         return res.status(400).json({
           message: 'The selected employee is not active.'
         });
       }
-
-      // ----------------------------------------
-      // BEGIN TRANSACTION
-      // ----------------------------------------
-
-      await connection.beginTransaction();
 
       let assignedCount = 0;
 
@@ -11600,6 +11403,8 @@ app.get(
           LEFT JOIN asset_assignments aa
             ON aa.employee_id = e.id
             AND aa.returned_at IS NULL
+
+          WHERE e.deleted_at IS NULL
 
           GROUP BY
             e.id,

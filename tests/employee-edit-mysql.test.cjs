@@ -1,4 +1,4 @@
-﻿// Explicit opt-in: creates and drops only a uniquely named local test database.
+// Explicit opt-in: creates and drops only a uniquely named local test database.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -22,7 +22,7 @@ test('real local MySQL: Add, Edit, duplicates, FKs and asset/history preservatio
     const source=fs.readFileSync('server.js','utf8');
     const pool={async getConnection(){return {query:connection.query.bind(connection),beginTransaction:connection.beginTransaction.bind(connection),commit:connection.commit.bind(connection),rollback:connection.rollback.bind(connection),release(){}};}};
     const context={pool,console,requireLogin(){},requireAdmin(){},app:{post(path,middleware,handler){create=handler;},put(path,middleware,handler){update=handler;}}};
-    vm.runInNewContext(source.slice(source.indexOf("app.post('/api/employees',"),source.indexOf('// EMPLOYEES - DELETE')),context);
+    vm.runInNewContext(source.slice(source.indexOf("app.post('/api/employees',"),source.indexOf("app.put('/api/employees/:id'")),context);
     vm.runInNewContext(source.slice(source.indexOf("app.put('/api/employees/:id'"),source.indexOf("app.delete('/api/employees/:id'")),context);
     async function call(handler,body,id){let status=200,result;await handler({body,params:{id},session:{user:{id:admin.id,role:'admin'}}},{status(n){status=n;return this;},json(value){result=value;}});return {status,result};}
     const body={employee_id:'TEST-EMP',full_name:'Test Employee',email:'test@example.com',department_id:1,position_title:'Engineer',status:'active'};

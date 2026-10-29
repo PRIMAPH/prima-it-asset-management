@@ -1,11 +1,11 @@
-﻿const fs = require('node:fs');
+const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const puppeteer = require('puppeteer');
 const source = fs.readFileSync('server.js', 'utf8');
 const updateSource = source.slice(source.indexOf("app.put('/api/employees/:id'"), source.indexOf("app.delete('/api/employees/:id'"));
-const createSource = source.slice(source.indexOf("app.post('/api/employees',"), source.indexOf('// EMPLOYEES - DELETE'));
+const createSource = source.slice(source.indexOf("app.post('/api/employees',"), source.indexOf("app.put('/api/employees/:id'"));
 const record = { id: 7, employee_id: 'EMP-7', full_name: 'Original Name', email: 'original@example.com', department_id: 2, position_title: 'Engineer', status: 'active' };
 function api(options = {}, create = false) {
   const employee = { ...record }, assignments = [{ employee_id: 7, asset_id: 42 }], history = [{ to_employee_id: 7 }];
