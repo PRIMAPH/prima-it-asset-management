@@ -1,3 +1,4 @@
+const { assignAssets } = require('./services/asset-assignment');
 require('dotenv').config();
 const multer = require('multer');
 const fs = require('fs');
@@ -1664,6 +1665,7 @@ app.get('/api/assets', requireLogin, async (req, res) => {
 
 app.post('/api/assets', requireLogin, async (req, res) => {
   const connection = await pool.getConnection();
+  let creationLock = false;
   try {
     const {
       category_id,
@@ -1684,6 +1686,24 @@ app.post('/api/assets', requireLogin, async (req, res) => {
       return res.status(400).json({ message: 'Asset name is required.' });
     }
 
+    const employeeId = req.body.employee_id;
+    if (employeeId != null && req.session.user.role !== 'admin') return res.status(403).json({ message: 'Admin access required to assign assets.' });
+    const requestId = req.body.creation_request_id;
+    if (requestId != null && !/^[a-zA-Z0-9-]{16,100}$/.test(requestId)) return res.status(400).json({ message: 'Invalid creation request ID.' });
+    // Protect sequential tag generation and retry deduplication across server processes.
+    const [locks] = await connection.query("SELECT GET_LOCK('prima_asset_creation', 10) AS acquired");
+    if (Number(locks[0]?.acquired) !== 1) throw Object.assign(new Error('Asset creation is busy. Please try again.'), { status: 503 });
+    creationLock = true;
+    if (requestId) {
+      const [existing] = await connection.query(`
+        SELECT a.id, a.asset_id, a.status FROM audit_logs l
+        INNER JOIN assets a ON a.id = l.entity_id
+        WHERE l.action = 'CREATE' AND l.entity_type = 'asset' AND l.user_id = ?
+        AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(l.details), l.details, '{}'), '$.creation_request_id')) = ?
+        LIMIT 1
+      `, [req.session.user.id, requestId]);
+      if (existing.length) return res.status(200).json({ ok: true, ...existing[0] });
+    }
     await connection.beginTransaction();
 
     const currentYear = new Date().getFullYear();
@@ -1737,10 +1757,11 @@ app.post('/api/assets', requireLogin, async (req, res) => {
     await connection.query(`
       INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details)
       VALUES (?, 'CREATE', 'asset', ?, ?)
-    `, [req.session.user.id, String(result.insertId), JSON.stringify({ asset_id: assetId, asset_name: String(asset_name).trim() })]);
+    `, [req.session.user.id, String(result.insertId), JSON.stringify({ asset_id: assetId, asset_name: String(asset_name).trim(), creation_request_id: requestId || null })]);
 
+    if (employeeId != null) await assignAssets(connection, { asset_ids: [result.insertId], employee_id: employeeId, userId: req.session.user.id });
     await connection.commit();
-    res.status(201).json({ ok: true, id: result.insertId, asset_id: assetId, message: 'Asset created successfully.' });
+    res.status(201).json({ ok: true, id: result.insertId, asset_id: assetId, status: employeeId != null ? 'Assigned' : 'Available', message: 'Asset created successfully.' });
   } catch (error) {
     await connection.rollback();
 
@@ -1753,12 +1774,14 @@ app.post('/api/assets', requireLogin, async (req, res) => {
     }
 
     console.error('CREATE ASSET ERROR:', error);
-    return res.status(500).json({
-      message: 'Unable to create asset.',
+    return res.status(error.status || 500).json({
+      message: error.status ? error.message : 'Unable to create asset. Please check the asset information and try again.',
       error: error.message
     });
   } finally {
-    connection.release();
+    try {
+      if (creationLock) await connection.query("SELECT RELEASE_LOCK('prima_asset_creation')");
+    } finally { connection.release(); }
   }
 });
 
@@ -4590,240 +4613,7 @@ app.post(
 
       await connection.beginTransaction();
 
-      const [employeeRows] = await connection.query(
-        `
-        SELECT
-          id,
-          employee_id,
-          full_name,
-          department_id,
-          status
-        FROM employees
-        WHERE id = ? AND deleted_at IS NULL
-        LIMIT 1
-        FOR UPDATE
-        `,
-        [employee_id]
-      );
-
-      if (employeeRows.length === 0) {
-        await connection.rollback();
-        return res.status(404).json({
-          message: 'Employee not found.'
-        });
-      }
-
-      const employee = employeeRows[0];
-
-      if (employee.status !== 'active') {
-        await connection.rollback();
-        return res.status(400).json({
-          message: 'The selected employee is not active.'
-        });
-      }
-
-      let assignedCount = 0;
-
-      let assignedAtValue = null;
-
-      if (assigned_at) {
-
-        assignedAtValue =
-          assigned_at.replace('T', ' ');
-
-        // Add seconds if they are not included
-        if (assignedAtValue.length === 16) {
-          assignedAtValue += ':00';
-        }
-      }
-
-      // ----------------------------------------
-      // PROCESS EACH ASSET
-      // ----------------------------------------
-
-      for (const rawAssetId of asset_ids) {
-
-        const assetId = Number(rawAssetId);
-
-        if (!Number.isInteger(assetId)) {
-          throw new Error(
-            'Invalid asset ID.'
-          );
-        }
-
-        // --------------------------------------
-        // LOCK ASSET
-        // --------------------------------------
-
-        const [assetRows] = await connection.query(
-          `
-          SELECT
-            id,
-            asset_id,
-            asset_name,
-            status
-          FROM assets
-          WHERE id = ?
-          FOR UPDATE
-          `,
-          [assetId]
-        );
-
-        if (assetRows.length === 0) {
-          throw new Error(
-            `Asset ID ${assetId} was not found.`
-          );
-        }
-
-        const asset = assetRows[0];
-
-        // --------------------------------------
-        // ONLY AVAILABLE ASSETS
-        // --------------------------------------
-
-        if (asset.status !== 'Available') {
-          throw new Error(
-            `${asset.asset_id} (${asset.asset_name}) is currently ${asset.status} and cannot be assigned.`
-          );
-        }
-
-        // --------------------------------------
-        // CHECK ACTIVE ASSIGNMENT
-        // --------------------------------------
-
-        const [activeAssignmentRows] =
-          await connection.query(
-            `
-            SELECT
-              aa.id,
-              aa.employee_id,
-              e.employee_id AS employee_code,
-              e.full_name
-            FROM asset_assignments aa
-            INNER JOIN employees e
-              ON e.id = aa.employee_id
-            WHERE aa.asset_id = ?
-              AND aa.returned_at IS NULL
-            ORDER BY aa.id DESC
-            LIMIT 1
-            `,
-            [asset.id]
-          );
-
-        if (activeAssignmentRows.length > 0) {
-
-          const currentCustodian =
-            activeAssignmentRows[0];
-
-          throw new Error(
-            `${asset.asset_id} (${asset.asset_name}) is already assigned to ${currentCustodian.full_name}.`
-          );
-        }
-
-        // --------------------------------------
-        // INSERT ASSIGNMENT
-        // --------------------------------------
-
-        await connection.query(
-          `
-          INSERT INTO asset_assignments
-          (
-            asset_id,
-            employee_id,
-            assigned_by,
-            assigned_at,
-            returned_at,
-            remarks
-          )
-          VALUES (?, ?, ?, ?, NULL, ?)
-          `,
-          [
-            asset.id,
-            employee.id,
-            req.session.user.id,
-            assignedAtValue || new Date(),
-            remarks || null
-          ]
-        );
-
-        // --------------------------------------
-        // UPDATE ASSET STATUS
-        // --------------------------------------
-
-        await connection.query(
-          `
-          UPDATE assets
-          SET status = 'Assigned'
-          WHERE id = ?
-          `,
-          [asset.id]
-        );
-
-        // --------------------------------------
-        // ASSET HISTORY
-        // --------------------------------------
-
-        await connection.query(
-          `
-          INSERT INTO asset_history
-          (
-            asset_id,
-            action,
-            from_status,
-            to_status,
-            from_employee_id,
-            to_employee_id,
-            remarks,
-            performed_by
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          `,
-          [
-            asset.id,
-            'Asset Assigned',
-            'Available',
-            'Assigned',
-            null,
-            employee.id,
-            remarks ||
-              `Assigned to ${employee.full_name}`,
-            req.session.user.id
-          ]
-        );
-
-        // --------------------------------------
-        // AUDIT LOG
-        // --------------------------------------
-
-        await connection.query(
-          `
-          INSERT INTO audit_logs
-          (
-            user_id,
-            action,
-            entity_type,
-            entity_id,
-            details
-          )
-          VALUES (?, ?, ?, ?, ?)
-          `,
-          [
-            req.session.user.id,
-            'ASSIGN',
-            'asset',
-            asset.id,
-            JSON.stringify({
-              asset_id: asset.asset_id,
-              asset_name: asset.asset_name,
-              employee_id: employee.employee_id,
-              employee_name: employee.full_name,
-              remarks: remarks || null
-            })
-          ]
-        );
-
-        assignedCount++;
-      }
+      const assignment = await assignAssets(connection, { asset_ids, employee_id, assigned_at, remarks, userId: req.session.user.id });
 
       // ----------------------------------------
       // COMMIT
@@ -4831,16 +4621,7 @@ app.post(
 
       await connection.commit();
 
-      res.json({
-        ok: true,
-        assigned: assignedCount,
-
-        employee: {
-          id: employee.id,
-          employee_id: employee.employee_id,
-          full_name: employee.full_name
-        }
-      });
+      res.json({ ok: true, ...assignment });
 
     } catch (error) {
 
@@ -4855,7 +4636,7 @@ app.post(
         error
       );
 
-      res.status(400).json({
+      res.status(error.status || 400).json({
         message:
           error.message ||
           'Unable to assign assets.'

@@ -1468,6 +1468,27 @@
       </div>
 
 
+      <fieldset id="newAssetAssignment" class="px-3 pb-3">
+        <legend class="fs-6 fw-semibold">Assign To (Optional)</legend>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="newAssignmentChoice" id="keepAssetAvailable" value="available" checked>
+          <label class="form-check-label" for="keepAssetAvailable">Keep Available (Inventory)</label>
+        </div>
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="radio" name="newAssignmentChoice" id="assignNewAsset" value="employee">
+          <label class="form-check-label" for="assignNewAsset">Assign to Employee</label>
+        </div>
+        <div id="newAssetEmployeeFields" hidden>
+          <label class="form-label" for="newEmployeeSearch">Employee</label>
+          <div class="employee-picker" id="newEmployeePicker">
+            <input type="text" id="newEmployeeSearch" class="form-control employee-picker-input" placeholder="Search employee name or ID..." autocomplete="off">
+            <div id="newEmployeePickerList" class="employee-picker-list"></div>
+          </div>
+          <input type="hidden" id="newAssignEmployee">
+          <div id="newEmployeeError" class="text-danger small" role="alert"></div>
+        </div>
+      </fieldset>
+
       <!-- =====================================================
            FOOTER
       ====================================================== -->

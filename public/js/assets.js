@@ -2048,7 +2048,10 @@ async function editAssetFromView(id) {
         // Store database ID so saveAsset knows this is EDIT
         // ----------------------------------------------------
 
+        delete form.dataset.createdId;
         form.dataset.editId = String(asset.id);
+        $('newAssetAssignment').hidden = true;
+        $('newEmployeeSearch').required = false;
 
         // ----------------------------------------------------
         // Reset form first
@@ -2305,8 +2308,10 @@ function openAddAssetModal() {
     // --------------------------------------------------------
 
     form.dataset.editId = '';
-
+    delete form.dataset.creationRequestId;
+    delete form.dataset.createdId;
     form.reset();
+    setupNewAssetAssignment();
 
     // --------------------------------------------------------
     // Reset image state
@@ -3583,6 +3588,58 @@ function setupPurchaseCostFormatting() {
 // SAVE / UPDATE ASSET
 // ============================================================
 
+function setupNewAssetAssignment() {
+  $('newAssetAssignment').hidden = false;
+  $('newAssetEmployeeFields').hidden = true;
+  $('newEmployeeSearch').required = false;
+  $('newAssignEmployee').value = '';
+  $('newEmployeeError').textContent = '';
+  setupEmployeePicker(['newEmployeeSearch', 'newAssignEmployee', 'newEmployeePickerList', 'newEmployeePicker']);
+  const update = async () => {
+    const selected = $('assignNewAsset').checked;
+    $('newAssetEmployeeFields').hidden = !selected;
+    $('newEmployeeSearch').required = selected;
+    $('newAssignEmployee').value = '';
+    $('newEmployeeSearch').value = '';
+    $('newEmployeePickerList').classList.remove('show');
+    $('newEmployeeError').textContent = '';
+    if (selected) {
+      try {
+        await loadEmployees();
+        if ($('assignNewAsset').checked) renderEmployeePickerList('', 'newEmployeePickerList');
+      } catch (error) {
+        employees = [];
+        $('newEmployeePickerList').classList.remove('show');
+        $('newEmployeeError').textContent = error.message;
+      }
+    }
+  };
+  $('assignNewAsset').onchange = update;
+  $('keepAssetAvailable').onchange = update;
+}
+
+function promptNewAssetAssignment(assetId) {
+  let element = $('newAssetAssignmentPrompt');
+  if (!element) {
+    element = document.createElement('div');
+    element.id = 'newAssetAssignmentPrompt';
+    element.className = 'modal fade';
+    element.tabIndex = -1;
+    element.innerHTML = '<div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body">Asset Added Successfully! Do you want to assign the added asset?</div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">NO</button><button type="button" class="btn btn-primary" id="assignCreatedAssetYes">YES</button></div></div></div>';
+    document.body.appendChild(element);
+  }
+  const modal = bootstrap.Modal.getOrCreateInstance(element);
+  $('assignCreatedAssetYes').onclick = () => {
+    $('assignCreatedAssetYes').disabled = true;
+    element.addEventListener('hidden.bs.modal', () => {
+      openAssignModal([assetId]).catch(error => showAlert(error.message, 'danger'));
+    }, { once: true });
+    modal.hide();
+  };
+  $('assignCreatedAssetYes').disabled = false;
+  modal.show();
+}
+
 async function saveAsset(event) {
 
     event.preventDefault();
@@ -3594,6 +3651,8 @@ async function saveAsset(event) {
         console.error('assetForm not found.');
         return;
     }
+
+    if (form.dataset.saving === 'true' || form.dataset.createdId) return;
 
     const editId =
         Number(form.dataset.editId || 0);
@@ -3717,6 +3776,24 @@ async function saveAsset(event) {
     // IMPORTANT:
     // Declare these ONCE only.
     // ========================================================
+
+    if (!isEdit) {
+      if ($('assignNewAsset').checked) {
+        const employeeId = Number($('newAssignEmployee').value);
+        if (!Number.isSafeInteger(employeeId) || employeeId <= 0) {
+          $('newEmployeeError').textContent = 'Select an employee from the list.';
+          $('newEmployeeSearch').focus();
+          return;
+        }
+        payload.employee_id = employeeId;
+      }
+      form.dataset.creationRequestId ||= Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
+      payload.creation_request_id = form.dataset.creationRequestId;
+    }
+    form.dataset.saving = 'true';
+    let createdAssetId = null;
+    let createdStatus = null;
+    let imageUploadWarning = null;
 
     const assetImageFile =
         $('assetImageFile')?.files?.[0] || null;
@@ -3904,6 +3981,10 @@ async function saveAsset(event) {
                 );
 
 
+            createdAssetId = newAssetId;
+            createdStatus = data.status || (payload.employee_id ? 'Assigned' : 'Available');
+            form.dataset.createdId = String(newAssetId);
+
             console.log(
                 'New asset ID:',
                 newAssetId
@@ -3928,14 +4009,16 @@ async function saveAsset(event) {
                     receiptImageFile,
                     false,
                     false
-                );
+                ).catch(error => {
+                    imageUploadWarning = 'Asset saved, but images could not be uploaded. Use Edit to retry. ' + error.message;
+                });
 
             }
 
 
             showAlert(
-                'Asset created successfully.',
-                'success'
+                imageUploadWarning || 'Asset created successfully.',
+                imageUploadWarning ? 'warning' : 'success'
             );
 
         }
@@ -3972,6 +4055,13 @@ async function saveAsset(event) {
                 'addAssetModal'
             );
 
+
+        const offerAssignment = createdAssetId && !payload.employee_id && createdStatus === 'Available';
+        if (offerAssignment && modalElement?.classList.contains('show')) {
+            modalElement.addEventListener('hidden.bs.modal', () => promptNewAssetAssignment(createdAssetId), { once: true });
+        } else if (offerAssignment) {
+            promptNewAssetAssignment(createdAssetId);
+        }
 
         if (modalElement) {
 
@@ -4010,6 +4100,7 @@ async function saveAsset(event) {
 
 
     } finally {
+        delete form.dataset.saving;
 
         if (submitButton) {
 
@@ -4913,6 +5004,8 @@ async function assignAssets(event) {
   const button =
     $('confirmAssignBtn');
 
+  if (button?.disabled) return;
+
   const originalButtonHTML =
     button
       ? button.innerHTML
@@ -5151,15 +5244,16 @@ function setupSelectAll() {
 // EMPLOYEE PICKER (Assign Modal)
 // ============================================================
 
-function renderEmployeePickerList(filterText = '') {
+function renderEmployeePickerList(filterText = '', listId = 'employeePickerList') {
 
-  const list = $('employeePickerList');
+  const list = $(listId);
 
   if (!list) return;
 
   const term = filterText.trim().toLowerCase();
 
   const filtered = employees.filter(employee => {
+    if (employee.status && employee.status !== 'active') return false;
 
     if (!term) return true;
 
@@ -5201,23 +5295,23 @@ function renderEmployeePickerList(filterText = '') {
   list.classList.add('show');
 }
 
-function setupEmployeePicker() {
+function setupEmployeePicker(ids = ['employeeSearch', 'assignEmployee', 'employeePickerList', 'employeePicker']) {
 
-  const input = $('employeeSearch');
-  const hidden = $('assignEmployee');
-  const list = $('employeePickerList');
-  const picker = $('employeePicker');
+  const [input, hidden, list, picker] = ids.map($);
 
   if (!input || !hidden || !list || !picker) return;
 
+  if (picker.dataset.initialized) return;
+  picker.dataset.initialized = 'true';
+
   // Show/filter list on focus and while typing
   input.addEventListener('focus', () => {
-    renderEmployeePickerList(input.value);
+    renderEmployeePickerList(input.value, list.id);
   });
 
   input.addEventListener('input', () => {
     hidden.value = '';
-    renderEmployeePickerList(input.value);
+    renderEmployeePickerList(input.value, list.id);
   });
 
   // Select an employee
