@@ -258,7 +258,7 @@ async function loadDepartments() {
   if ($('department')) {
 
     $('department').innerHTML =
-      '<option value="">Select Department</option>' +
+      '<option value="">Others (default)</option>' +
 
       departments.map(department => `
         <option value="${department.id}">
@@ -1302,6 +1302,10 @@ function prepareEmployeeForm(employee = null) {
   const form = $('employeeForm');
   form.reset();
   editingEmployeeId = employee ? Number(employee.id) : null;
+  $('department').querySelector('option[value=""]').textContent = employee ? 'No department' : 'Others (default)';
+  form.dataset.originalDepartment = employee?.department_id ?? '';
+  form.dataset.departmentChanged = '';
+  $('department').onchange = () => { form.dataset.departmentChanged = 'true'; };
   showEmployeeFormAlert('');
   $('employeeModalTitle').textContent = employee ? 'Edit Employee' : 'Add Employee';
   $('saveEmployeeBtn').textContent = employee ? 'Save Changes' : 'Save Employee';
@@ -1309,6 +1313,8 @@ function prepareEmployeeForm(employee = null) {
     for (const name of ['employee_id', 'full_name', 'email', 'department_id', 'position_title', 'status']) {
       form.elements.namedItem(name).value = employee[name] ?? '';
     }
+  } else {
+    $('department').value = departments.find(department => department.name.toLowerCase() === 'others')?.id ?? '';
   }
 }
 
@@ -1345,6 +1351,9 @@ async function saveEmployee(event) {
   }
   const form = event.currentTarget;
   const data = Object.fromEntries(new FormData(form).entries());
+  if (editId && !data.department_id && !form.dataset.originalDepartment && !form.dataset.departmentChanged) {
+    delete data.department_id; // Preserve an existing blank department unless explicitly cleared.
+  }
   if (!data.employee_id.trim() || !data.full_name.trim()) {
     showEmployeeFormAlert('Employee ID and Full Name are required.');
     return;

@@ -1,3 +1,4 @@
+const { getOthersDepartmentId } = require('./services/employee-department');
 const { assignAssets } = require('./services/asset-assignment');
 require('dotenv').config();
 const multer = require('multer');
@@ -1365,7 +1366,11 @@ app.post('/api/employees', requireLogin, async (req, res) => {
 
     let departmentId = null;
 
-    if (department_id) {
+    const hasDepartment = department_id != null && String(department_id).trim() !== '';
+    if (hasDepartment) {
+      if (!['string', 'number'].includes(typeof department_id) || !Number.isSafeInteger(Number(department_id)) || Number(department_id) <= 0) {
+        return res.status(400).json({ message: 'Invalid department.' });
+      }
 
       const [departmentRows] =
         await connection.query(`
@@ -1396,6 +1401,7 @@ app.post('/api/employees', requireLogin, async (req, res) => {
     // ---------------------------------------------
 
     await connection.beginTransaction();
+    if (!hasDepartment) departmentId = await getOthersDepartmentId(connection);
 
 
     const [result] =
@@ -1507,7 +1513,8 @@ app.put('/api/employees/:id', requireAdmin, async (req, res) => {
   const email = (body.email || '').trim() || null;
   const position = (body.position_title || '').trim() || null;
   const status = (body.status || '').trim().toLowerCase();
-  const departmentId = body.department_id == null || body.department_id === '' ? null : Number(body.department_id);
+  const departmentProvided = Object.prototype.hasOwnProperty.call(body, 'department_id');
+  let departmentId = body.department_id == null || String(body.department_id).trim() === '' ? null : Number(body.department_id);
   if (!employeeId || !fullName) return res.status(400).json({ message: 'Employee ID and Full Name are required.' });
   if (employeeId.length > 50 || fullName.length > 150 || email?.length > 150 || position?.length > 100) {
     return res.status(400).json({ message: 'An employee field exceeds its maximum length.' });
@@ -1527,7 +1534,9 @@ app.put('/api/employees/:id', requireAdmin, async (req, res) => {
     if (previous.deleted_at) return res.status(409).json({ message: 'Deleted employees cannot be edited.' });
     const [duplicates] = await connection.query('SELECT id FROM employees WHERE employee_id = ? AND id <> ? LIMIT 1', [employeeId, id]);
     if (duplicates.length) return res.status(409).json({ message: 'Employee ID already exists.' });
-    if (departmentId !== null) {
+    if (!departmentProvided) departmentId = previous.department_id;
+    else if (departmentId === null) departmentId = await getOthersDepartmentId(connection);
+    if (departmentId != null) {
       const [departments] = await connection.query('SELECT id FROM departments WHERE id = ?', [departmentId]);
       if (!departments.length) return res.status(400).json({ message: 'Selected department was not found.' });
     }

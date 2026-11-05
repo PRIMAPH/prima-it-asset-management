@@ -1,3 +1,4 @@
+const { getOthersDepartmentId } = require('../services/employee-department');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
@@ -30,7 +31,7 @@ function api(options = {}, create = false) {
       return [{ affectedRows: 1 }];
     }
   };
-  const context = { app: { put(path, auth, fn) { middleware = auth; handler = fn; }, post(path, auth, fn) { middleware = auth; handler = fn; } }, pool: { async getConnection() { return connection; } }, console: { error() {} }, sendLoginRequired(req,res) { return res.status(401).json({message:'Login required.'}); }, requireLogin(req,res,next) { next(); } };
+  const context = { getOthersDepartmentId, app: { put(path, auth, fn) { middleware = auth; handler = fn; }, post(path, auth, fn) { middleware = auth; handler = fn; } }, pool: { async getConnection() { return connection; } }, console: { error() {} }, sendLoginRequired(req,res) { return res.status(401).json({message:'Login required.'}); }, requireLogin(req,res,next) { next(); } };
   vm.runInNewContext(source.slice(source.indexOf('function requireAdmin('), source.indexOf('function requireMaintenanceStaff(')) + (create ? createSource : updateSource), context);
   return { employee, assignments, history, queries, async call(body = record, role = 'admin', id = '7') {
     let status = 200, result;
@@ -89,7 +90,8 @@ test('browser: edit fields, PUT, refresh filters, duplicate submission, errors, 
       currentUser={role:'admin'};
       employeeModal={show(){window.opened=true;},hide(){window.opened=false;}};
       employeeViewModal={hide(){const v=$('employeeViewModal');v.classList.remove('show');v.dispatchEvent(new Event('hidden.bs.modal'));}};
-      $('department').innerHTML='<option value=""></option><option value="2">IT</option>';
+      departments=[{id:2,name:'IT'},{id:9,name:'Others'},{id:12,name:'Accounting'}];
+      $('department').innerHTML='<option value=""></option><option value="2">IT</option><option value="9">Others</option><option value="12">Accounting</option>';
       $('departmentFilter').innerHTML='<option value="2">IT</option>';
       $('searchInput').value='Original'; $('statusFilter').value='active';
       window.fetch=async (url,options={})=>{
@@ -98,6 +100,7 @@ test('browser: edit fields, PUT, refresh filters, duplicate submission, errors, 
           if(window.hold) await new Promise(resolve=>window.releaseSave=resolve);
           if(window.failSave) return {ok:false,json:async()=>({message:'Employee ID already exists.'})};
           Object.assign(testRecord,JSON.parse(options.body));
+          testRecord.department_name = departments.find(d => String(d.id) === String(testRecord.department_id))?.name || '';
           return {ok:true,json:async()=>({message:'Saved',employee_id:testRecord.employee_id})};
         }
         return {ok:true,json:async()=>url.includes('?')?[testRecord]:testRecord};
@@ -126,10 +129,28 @@ test('browser: edit fields, PUT, refresh filters, duplicate submission, errors, 
     await page.evaluate(async()=>{
       window.failSave=false; prepareEmployeeForm();
       if(editingEmployeeId!==null || $('fullName').value || $('employeeModalTitle').textContent!=='Add Employee') throw Error('Add did not reset');
+      if($('department').value!=='9' || $('department').required) throw Error('Default department is not optional Others');
       $('employeeId').value='ADD';$('fullName').value='New Employee';
       await saveEmployee({preventDefault(){},currentTarget:$('employeeForm')});
     });
     assert.equal(await page.evaluate(()=>calls.filter(c=>c.method).at(-1).method),'POST');
+    assert.equal(await page.evaluate(()=>JSON.parse(calls.filter(c=>c.method).at(-1).body).department_id),'9');
+    assert.match(await page.$eval('#employeeTableBody',e=>e.textContent),/Others/);
+    await page.evaluate(async()=>{
+      for(const departmentId of ['2','12']) {
+        prepareEmployeeForm();$('employeeId').value='ADD-'+departmentId;$('fullName').value='Selected Department';
+        $('department').value=departmentId;await saveEmployee({preventDefault(){},currentTarget:$('employeeForm')});
+        if(JSON.parse(calls.filter(c=>c.method).at(-1).body).department_id!==departmentId) throw Error('Explicit department changed');
+        if(!$('employeeTableBody').textContent.includes(departments.find(d=>String(d.id)===departmentId).name)) throw Error('List department not refreshed');
+      }
+      prepareEmployeeForm({...testRecord,id:7,department_id:null});
+      if($('department').value!=='')throw Error('Blank edit defaulted');
+      await saveEmployee({preventDefault(){},currentTarget:$('employeeForm')});
+      if('department_id' in JSON.parse(calls.filter(c=>c.method).at(-1).body))throw Error('Untouched blank department changed');
+      prepareEmployeeForm({...testRecord,id:7,department_id:2});$('department').value='';$('department').dispatchEvent(new Event('change'));
+      await saveEmployee({preventDefault(){},currentTarget:$('employeeForm')});
+      if(JSON.parse(calls.filter(c=>c.method).at(-1).body).department_id!=='')throw Error('Explicit clear not submitted');
+    });
     await page.evaluate(async()=>{
       currentUser={role:'viewer'}; renderEmployees(); const before=calls.length; await editEmployee(7);
       if(calls.length!==before || document.querySelector('.edit-employee-btn')) throw Error('Non-admin edit exposed');
