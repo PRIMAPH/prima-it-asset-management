@@ -53,7 +53,7 @@ test('invalid employees, permissions and history failures never leave partially 
   }
 });
 
-test('browser: both choices, search IDs and names, validation, duplicate save and YES/NO prompt',async()=>{
+test('browser: both choices, search IDs and names, validation, duplicate save and no post-creation prompt',async()=>{
   const browser=await puppeteer.launch({headless:true,pipe:true});
   try {
     const page=await browser.newPage();
@@ -66,8 +66,8 @@ test('browser: both choices, search IDs and names, validation, duplicate save an
     });
     await page.addScriptTag({content:fs.readFileSync('public/js/assets.js','utf8')});
     await page.evaluate(()=>{
-      window.saved=[];window.opened=[];window.messages=[];
-      loadAssets=async()=>{};showAlert=(...args)=>messages.push(args);
+      window.saved=[];window.opened=[];window.messages=[];window.refreshes=0;
+      loadAssets=async()=>{refreshes++;};showAlert=(...args)=>messages.push(args);
       openAssignModal=async ids=>opened.push(ids);
       window.fetch=async(url,options={})=>{
         if(url.startsWith('/api/employees'))return {ok:true,json:async()=>[{id:7,employee_id:'EMP-007',full_name:'Jane Example',department_name:'Finance',status:'active'}]};
@@ -78,22 +78,26 @@ test('browser: both choices, search IDs and names, validation, duplicate save an
     await page.evaluate(async()=>{openAddAssetModal();document.querySelector('[name="asset_name"]').value='Inventory';await Promise.all([saveAsset({preventDefault(){}}),saveAsset({preventDefault(){}})]);});
     assert.equal(await page.evaluate(()=>saved.length),1);
     assert.equal(await page.$eval('#keepAssetAvailable',e=>e.checked),true);
-    assert.match(await page.$eval('#newAssetAssignmentPrompt',e=>e.textContent),/Asset Added Successfully! Do you want to assign the added asset\?/);
-    await page.evaluate(()=>$('assignCreatedAssetYes').click());
-    assert.deepEqual(await page.evaluate(()=>opened),[[1]]);
-    await page.evaluate(async()=>{openAddAssetModal();document.querySelector('[name="asset_name"]').value='Available';await saveAsset({preventDefault(){}});$('newAssetAssignmentPrompt').querySelector('[data-bs-dismiss]').click();});
-    assert.deepEqual(await page.evaluate(()=>opened),[[1]]);
+    assert.equal(await page.$('#newAssetAssignmentPrompt'),null);
+    assert.deepEqual(await page.evaluate(()=>opened),[]);
+    assert.deepEqual(await page.evaluate(()=>messages.at(-1)),['Asset added successfully.','success']);
+    assert.equal(await page.$eval('#addAssetModal',e=>e.classList.contains('show')),false);
+    assert.equal(await page.evaluate(()=>refreshes),1);
     await page.evaluate(async()=>{openAddAssetModal();document.querySelector('[name="asset_name"]').value='Assigned';$('assignNewAsset').checked=true;await $('assignNewAsset').onchange();});
     for(const term of ['EMP-007','Jane']){
       await page.evaluate(term=>{const input=$('newEmployeeSearch');input.value=term;input.dispatchEvent(new Event('input'));},term);
       assert.match(await page.$eval('#newEmployeePickerList',e=>e.textContent),/Finance/);
     }
     await page.evaluate(async()=>{await saveAsset({preventDefault(){}});});
+    assert.equal(await page.evaluate(()=>saved.length),1);
+    await page.evaluate(async()=>{$('newEmployeePickerList').querySelector('.employee-option').click();await Promise.all([saveAsset({preventDefault(){}}),saveAsset({preventDefault(){}})]);});
     assert.equal(await page.evaluate(()=>saved.length),2);
-    await page.evaluate(async()=>{$('newEmployeePickerList').querySelector('.employee-option').click();await saveAsset({preventDefault(){}});});
-    assert.equal(await page.evaluate(()=>saved[2].employee_id),7);
-    assert.equal(await page.$eval('#newAssetAssignmentPrompt',e=>e.classList.contains('show')),false);
-    assert.deepEqual(await page.evaluate(()=>opened),[[1]]);
+    assert.equal(await page.evaluate(()=>saved[1].employee_id),7);
+    assert.equal(await page.$('#newAssetAssignmentPrompt'),null);
+    assert.deepEqual(await page.evaluate(()=>opened),[]);
+    assert.deepEqual(await page.evaluate(()=>messages.at(-1)),['Asset added and assigned successfully to Jane Example.','success']);
+    assert.equal(await page.$eval('#addAssetModal',e=>e.classList.contains('show')),false);
+    assert.equal(await page.evaluate(()=>refreshes),2);
     // Switching back to inventory clears employee identity; a failed save remains retryable.
     await page.evaluate(async()=>{
       openAddAssetModal(); document.querySelector('[name="asset_name"]').value='Retry';
@@ -101,10 +105,14 @@ test('browser: both choices, search IDs and names, validation, duplicate save an
       $('newEmployeePickerList').querySelector('.employee-option').click();
       $('keepAssetAvailable').checked=true; await $('keepAssetAvailable').onchange();
       window.normalFetch=fetch;
-      window.failedPayload=null;
+      window.failedPayload=null;window.messages=[];
       window.fetch=async(url,options)=>{failedPayload=JSON.parse(options.body);return {ok:false,json:async()=>({message:'Please try again.'})};};
       await saveAsset({preventDefault(){}});
     });
+    assert.deepEqual(await page.evaluate(()=>messages),[['Please try again.','danger']]);
+    assert.equal(await page.$eval('#addAssetModal',e=>e.classList.contains('show')),true);
+    assert.equal(await page.evaluate(()=>refreshes),2);
+    assert.equal(await page.$('#newAssetAssignmentPrompt'),null);
     assert.equal(await page.$eval('#newAssignEmployee',e=>e.value),'');
     assert.equal(await page.$eval('#assetForm button[type="submit"]',e=>e.disabled),false);
     await page.evaluate(async()=>{fetch=normalFetch;await saveAsset({preventDefault(){}});});
@@ -112,7 +120,7 @@ test('browser: both choices, search IDs and names, validation, duplicate save an
     assert.equal(await page.evaluate(()=>saved.at(-1).employee_id),undefined);
     // A failed employee load cannot leave a stale employee selectable.
     await page.evaluate(async()=>{
-      $('newAssetAssignmentPrompt').querySelector('[data-bs-dismiss]').click();openAddAssetModal();
+      openAddAssetModal();
       fetch=async()=>({ok:false});$('assignNewAsset').checked=true;await $('assignNewAsset').onchange();
     });
     assert.match(await page.$eval('#newEmployeeError',e=>e.textContent),/Unable to load employees/);

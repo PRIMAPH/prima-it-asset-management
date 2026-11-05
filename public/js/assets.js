@@ -3618,28 +3618,6 @@ function setupNewAssetAssignment() {
   $('keepAssetAvailable').onchange = update;
 }
 
-function promptNewAssetAssignment(assetId) {
-  let element = $('newAssetAssignmentPrompt');
-  if (!element) {
-    element = document.createElement('div');
-    element.id = 'newAssetAssignmentPrompt';
-    element.className = 'modal fade';
-    element.tabIndex = -1;
-    element.innerHTML = '<div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body">Asset Added Successfully! Do you want to assign the added asset?</div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">NO</button><button type="button" class="btn btn-primary" id="assignCreatedAssetYes">YES</button></div></div></div>';
-    document.body.appendChild(element);
-  }
-  const modal = bootstrap.Modal.getOrCreateInstance(element);
-  $('assignCreatedAssetYes').onclick = () => {
-    $('assignCreatedAssetYes').disabled = true;
-    element.addEventListener('hidden.bs.modal', () => {
-      openAssignModal([assetId]).catch(error => showAlert(error.message, 'danger'));
-    }, { once: true });
-    modal.hide();
-  };
-  $('assignCreatedAssetYes').disabled = false;
-  modal.show();
-}
-
 async function saveAsset(event) {
 
     event.preventDefault();
@@ -3791,8 +3769,9 @@ async function saveAsset(event) {
       payload.creation_request_id = form.dataset.creationRequestId;
     }
     form.dataset.saving = 'true';
-    let createdAssetId = null;
-    let createdStatus = null;
+    const assignedEmployeeName = payload.employee_id
+      ? employees.find(employee => Number(employee.id) === payload.employee_id)?.full_name || $('newEmployeeSearch').value
+      : null;
     let imageUploadWarning = null;
 
     const assetImageFile =
@@ -3981,8 +3960,6 @@ async function saveAsset(event) {
                 );
 
 
-            createdAssetId = newAssetId;
-            createdStatus = data.status || (payload.employee_id ? 'Assigned' : 'Available');
             form.dataset.createdId = String(newAssetId);
 
             console.log(
@@ -4017,7 +3994,9 @@ async function saveAsset(event) {
 
 
             showAlert(
-                imageUploadWarning || 'Asset created successfully.',
+                imageUploadWarning || (payload.employee_id
+                    ? `Asset added and assigned successfully to ${assignedEmployeeName}.`
+                    : 'Asset added successfully.'),
                 imageUploadWarning ? 'warning' : 'success'
             );
 
@@ -4055,13 +4034,6 @@ async function saveAsset(event) {
                 'addAssetModal'
             );
 
-
-        const offerAssignment = createdAssetId && !payload.employee_id && createdStatus === 'Available';
-        if (offerAssignment && modalElement?.classList.contains('show')) {
-            modalElement.addEventListener('hidden.bs.modal', () => promptNewAssetAssignment(createdAssetId), { once: true });
-        } else if (offerAssignment) {
-            promptNewAssetAssignment(createdAssetId);
-        }
 
         if (modalElement) {
 
