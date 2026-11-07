@@ -40,6 +40,7 @@
   href="/css/dark-components.css"
 >
   <link rel="stylesheet" href="/css/navigation.css?v=4">
+  <link rel="stylesheet" href="/css/employees.css?v=2">
   <script src="/js/theme.js"></script>
 <script src="/js/alerts.js?v=2"></script>
   <link rel="icon" href="/favicon.ico" sizes="any">
@@ -60,7 +61,7 @@
        MAIN CONTENT
   ====================================================== -->
 
-  <main class="main-content">
+  <main class="main-content employees-page">
 
     <!-- HEADER -->
 
@@ -182,28 +183,37 @@
          EMPLOYEE TABLE
     ====================================================== -->
 
-    <div class="card border-0 shadow-sm">
+    <div class="card border-0 shadow-sm employee-list-card">
 
       <div class="card-body">
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
 
           <h5 class="mb-0">
             Employee List
           </h5>
 
+          <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
           <span
             id="employeeCount"
             class="text-muted small">
             0 employees
           </span>
+          <div class="d-flex gap-1" role="group" aria-label="Selected employee actions">
+            <button id="selectedEmployeeViewBtn" type="button" class="btn btn-sm btn-outline-primary" disabled><i class="bi bi-eye me-1" aria-hidden="true"></i>View</button>
+            <button id="selectedEmployeeEditBtn" type="button" class="btn btn-sm btn-outline-primary" disabled><i class="bi bi-pencil-square me-1" aria-hidden="true"></i>Edit</button>
+            <button id="selectedEmployeeDeleteBtn" type="button" class="btn btn-sm btn-outline-danger" disabled><i class="bi bi-trash me-1" aria-hidden="true"></i>Delete</button>
+          </div>
+          </div>
 
         </div>
 
 
-        <div class="table-responsive">
+        <p id="employeeSelectionHelp" class="text-muted small mb-2">Select a row to use actions. Press Enter or Space to select or deselect.</p>
+        <span id="employeeSelectionStatus" class="visually-hidden" role="status" aria-live="polite">No employee selected</span>
+        <div class="table-responsive employee-table-scroll" tabindex="0" role="region" aria-label="Scrollable employee list">
 
-          <table class="table table-hover align-middle">
+          <table id="employeeTable" class="table table-hover align-middle" role="grid" aria-label="Employee List" aria-multiselectable="false" aria-describedby="employeeSelectionHelp">
 
             <thead>
 
@@ -221,10 +231,6 @@
 
                 <th>Status</th>
 
-                <th class="text-end">
-                  Action
-                </th>
-
               </tr>
 
             </thead>
@@ -234,7 +240,7 @@
               <tr>
 
                 <td
-                  colspan="7"
+                  colspan="6"
                   class="text-center text-muted py-5">
 
                   Loading employees...
@@ -873,7 +879,7 @@
   <script src="/vendor/xlsx/xlsx.full.min.js"></script>
 <script src="/js/navbar.js?v=5"></script>
   <script src="/js/asset-return.js?v=1"></script>
-  <script src="/js/employees.js?v=6"></script>
+  <script src="/js/employees.js?v=7"></script>
  
 
 </body>

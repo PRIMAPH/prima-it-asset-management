@@ -4,19 +4,23 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const puppeteer=require('puppeteer');
 const {assignAssets}=require('../services/asset-assignment');
+const {allocateAssetId}=require('../services/asset-id');
 
 function endpoint({employeeStatus='active', failHistory=false}={}) {
   let handler, snapshot;
-  const state={assets:[], assignments:[], history:[], audits:[]};
+  const state={assets:[], assignments:[], history:[], audits:[], requests:{}, counter:0};
   const connection={
     async beginTransaction(){snapshot=structuredClone(state);},
     async commit(){snapshot=null;},
     async rollback(){if(snapshot)Object.assign(state,snapshot); snapshot=null;}, release(){},
     async query(sql,v=[]) {
-      if(sql.includes('GET_LOCK'))return [[{acquired:1}]];
-      if(sql.includes('RELEASE_LOCK'))return [[{released:1}]];
+      if(sql.includes('INSERT INTO asset_creation_requests')) {state.requests[v.join(':')] ||= {id:null};return [{}];}
+      if(sql.includes('FROM asset_creation_requests'))return [[state.requests[v.join(':')]]];
+      if(sql.includes('UPDATE asset_creation_requests')) {state.requests[v.slice(3).join(':')]={id:v[0],asset_id:v[1],status:v[2]};return [{}];}
+      if(sql.includes('SELECT YEAR(CURRENT_DATE())'))return [[{asset_year:2026}]];
+      if(sql.includes('INSERT INTO asset_id_counters')) {state.counter++;return [{}];}
+      if(sql.includes('FROM asset_id_counters')) return [[{asset_id:'PRIMA-2026-'+String(state.counter).padStart(6,'0')}]];
       if(sql.includes('FROM audit_logs l'))return [state.audits.filter(a=>a.request===v[1]).map(a=>state.assets.find(x=>x.id===a.id))];
-      if(sql.includes('highest_number'))return [[{highest_number:state.assets.length}]];
       if(sql.includes('INSERT INTO assets')) {const id=state.assets.length+1;state.assets.push({id,asset_id:v[0],asset_name:v[2],status:'Available'});return [{insertId:id}];}
       if(sql.includes('FROM employees'))return [v[0]===999?[]:[{id:Number(v[0]),employee_id:'EMP-7',full_name:'Test Employee',status:employeeStatus}]];
       if(sql.includes('FROM assets'))return [state.assets.filter(a=>a.id===v[0])];
@@ -29,7 +33,7 @@ function endpoint({employeeStatus='active', failHistory=false}={}) {
     }
   };
   const source=fs.readFileSync('server.js','utf8');
-  vm.runInNewContext(source.slice(source.indexOf("app.post('/api/assets',"),source.indexOf("app.get('/api/assets/:id'")),{app:{post(p,g,h){handler=h;}},requireLogin(){},pool:{getConnection:async()=>connection},assignAssets,console:{error(){}}});
+  vm.runInNewContext(source.slice(source.indexOf("app.post('/api/assets',"),source.indexOf("app.get('/api/assets/:id'")),{app:{post(p,g,h){handler=h;}},requireLogin(){},pool:{getConnection:async()=>connection},allocateAssetId,assignAssets,console:{error(){}}});
   return {state,connection,async save(body,role='admin'){let status=200,result;await handler({body,session:{user:{id:1,role}}},{status(n){status=n;return this;},json(r){result=r;}});return {status,result};}};
 }
 
@@ -70,17 +74,41 @@ test('browser: both choices, search IDs and names, validation, duplicate save an
       loadAssets=async()=>{refreshes++;};showAlert=(...args)=>messages.push(args);
       openAssignModal=async ids=>opened.push(ids);
       window.fetch=async(url,options={})=>{
+        if(url==='/api/assets/next-id')return {ok:true,json:async()=>({asset_id:'PRIMA-2026-000106'})};
         if(url.startsWith('/api/employees'))return {ok:true,json:async()=>[{id:7,employee_id:'EMP-007',full_name:'Jane Example',department_name:'Finance',status:'active'}]};
         const body=JSON.parse(options.body);saved.push(body);await new Promise(r=>setTimeout(r,20));
-        return {ok:true,json:async()=>({id:saved.length,status:body.employee_id?'Assigned':'Available'})};
+        return {ok:true,json:async()=>({id:saved.length,asset_id:'PRIMA-2026-'+String(106+saved.length).padStart(6,'0'),status:body.employee_id?'Assigned':'Available'})};
       };
     });
-    await page.evaluate(async()=>{openAddAssetModal();document.querySelector('[name="asset_name"]').value='Inventory';await Promise.all([saveAsset({preventDefault(){}}),saveAsset({preventDefault(){}})]);});
+    await page.evaluate(async()=>{openAddAssetModal();await new Promise(r=>setTimeout(r,0));});
+    assert.equal(await page.$eval('#assetIdPreview',e=>e.value),'PRIMA-2026-000106');
+    assert.equal(await page.$eval('#assetIdPreview',e=>e.readOnly),true);
+    // Opening/reopening only reads the preview. Failure offers a real retry.
+    await page.evaluate(async()=>{
+      window.previewFetch=fetch;
+      window.fetch=async()=>{throw new Error('Network unavailable');};
+      openAddAssetModal();
+      window.loadingPlaceholder=$('assetIdPreview').placeholder;
+      await new Promise(r=>setTimeout(r,0));
+    });
+    assert.equal(await page.evaluate(()=>loadingPlaceholder),'Loading Asset ID...');
+    assert.equal(await page.$eval('#assetIdPreview',e=>e.placeholder),'Unable to load Asset ID');
+    assert.equal(await page.$eval('#assetIdPreviewRetry',e=>e.hidden),false);
+    assert.equal(await page.evaluate(()=>saved.length),0);
+    await page.evaluate(()=>{fetch=previewFetch;});
+    await page.evaluate(()=>$('assetIdPreviewRetry').click());
+    await page.waitForFunction(()=>document.getElementById('assetIdPreview').value==='PRIMA-2026-000106');
+    assert.equal(await page.$eval('#assetIdPreviewRetry',e=>e.hidden),true);
+    await page.evaluate(async()=>{openAddAssetModal();await new Promise(r=>setTimeout(r,0));});
+    assert.equal(await page.$eval('#assetIdPreview',e=>e.value),'PRIMA-2026-000106');
+    assert.equal(await page.evaluate(()=>saved.length),0);
+
+    await page.evaluate(async()=>{document.querySelector('[name="asset_name"]').value='Inventory';await Promise.all([saveAsset({preventDefault(){}}),saveAsset({preventDefault(){}})]);});
     assert.equal(await page.evaluate(()=>saved.length),1);
     assert.equal(await page.$eval('#keepAssetAvailable',e=>e.checked),true);
     assert.equal(await page.$('#newAssetAssignmentPrompt'),null);
     assert.deepEqual(await page.evaluate(()=>opened),[]);
-    assert.deepEqual(await page.evaluate(()=>messages.at(-1)),['Asset added successfully.','success']);
+    assert.deepEqual(await page.evaluate(()=>messages.at(-1)),['Asset PRIMA-2026-000107 added successfully!','success']);
     assert.equal(await page.$eval('#addAssetModal',e=>e.classList.contains('show')),false);
     assert.equal(await page.evaluate(()=>refreshes),1);
     await page.evaluate(async()=>{openAddAssetModal();document.querySelector('[name="asset_name"]').value='Assigned';$('assignNewAsset').checked=true;await $('assignNewAsset').onchange();});
@@ -95,7 +123,7 @@ test('browser: both choices, search IDs and names, validation, duplicate save an
     assert.equal(await page.evaluate(()=>saved[1].employee_id),7);
     assert.equal(await page.$('#newAssetAssignmentPrompt'),null);
     assert.deepEqual(await page.evaluate(()=>opened),[]);
-    assert.deepEqual(await page.evaluate(()=>messages.at(-1)),['Asset added and assigned successfully to Jane Example.','success']);
+    assert.deepEqual(await page.evaluate(()=>messages.at(-1)),['Asset PRIMA-2026-000108 added successfully! Assigned to Jane Example.','success']);
     assert.equal(await page.$eval('#addAssetModal',e=>e.classList.contains('show')),false);
     assert.equal(await page.evaluate(()=>refreshes),2);
     // Switching back to inventory clears employee identity; a failed save remains retryable.

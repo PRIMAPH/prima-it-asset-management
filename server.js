@@ -1,3 +1,4 @@
+const { allocateAssetId, previewAssetId } = require('./services/asset-id');
 const { getOthersDepartmentId } = require('./services/employee-department');
 const { assignAssets } = require('./services/asset-assignment');
 require('dotenv').config();
@@ -1613,6 +1614,11 @@ app.get('/api/assets', requireLogin, async (req, res) => {
     const search = String(req.query.search || '').trim();
     const status = String(req.query.status || '').trim();
     const categoryId = Number(req.query.category_id || 0);
+    const locationFilter = String(req.query.location_id || '').trim();
+    const locationId = Number(locationFilter);
+    if (locationFilter && locationFilter !== 'none' && (!Number.isSafeInteger(locationId) || locationId <= 0)) {
+      return res.status(400).json({ message: 'Invalid location filter.' });
+    }
 
     let sql = `
       SELECT
@@ -1663,6 +1669,13 @@ app.get('/api/assets', requireLogin, async (req, res) => {
       params.push(categoryId);
     }
 
+    if (locationFilter === 'none') {
+      sql += ' AND a.location_id IS NULL';
+    } else if (locationFilter) {
+      sql += ' AND a.location_id = ?';
+      params.push(locationId);
+    }
+
     sql += ' ORDER BY a.id DESC';
 
     const [rows] = await pool.query(sql, params);
@@ -1672,9 +1685,18 @@ app.get('/api/assets', requireLogin, async (req, res) => {
   }
 });
 
+app.get('/api/assets/next-id', requireLogin, async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    res.json({ asset_id: await previewAssetId(pool) });
+  } catch (error) {
+    console.error('ASSET ID PREVIEW ERROR:', error);
+    res.status(500).json({ message: 'Unable to preview Asset ID. The final ID will be generated when saving.' });
+  }
+});
+
 app.post('/api/assets', requireLogin, async (req, res) => {
   const connection = await pool.getConnection();
-  let creationLock = false;
   try {
     const {
       category_id,
@@ -1699,10 +1721,20 @@ app.post('/api/assets', requireLogin, async (req, res) => {
     if (employeeId != null && req.session.user.role !== 'admin') return res.status(403).json({ message: 'Admin access required to assign assets.' });
     const requestId = req.body.creation_request_id;
     if (requestId != null && !/^[a-zA-Z0-9-]{16,100}$/.test(requestId)) return res.status(400).json({ message: 'Invalid creation request ID.' });
-    // Protect sequential tag generation and retry deduplication across server processes.
-    const [locks] = await connection.query("SELECT GET_LOCK('prima_asset_creation', 10) AS acquired");
-    if (Number(locks[0]?.acquired) !== 1) throw Object.assign(new Error('Asset creation is busy. Please try again.'), { status: 503 });
-    creationLock = true;
+    await connection.beginTransaction();
+    if (requestId) {
+      // The primary key serializes retries, including requests on other servers.
+      await connection.query(`INSERT INTO asset_creation_requests (user_id, request_id)
+        VALUES (?, ?) ON DUPLICATE KEY UPDATE request_id = VALUES(request_id)`,
+        [req.session.user.id, requestId]);
+      const [[saved]] = await connection.query(`SELECT asset_db_id AS id, asset_id, asset_status AS status
+        FROM asset_creation_requests WHERE user_id = ? AND request_id = ? FOR UPDATE`,
+        [req.session.user.id, requestId]);
+      if (saved.id) {
+        await connection.commit();
+        return res.status(200).json({ ok: true, ...saved });
+      }
+    }
     if (requestId) {
       const [existing] = await connection.query(`
         SELECT a.id, a.asset_id, a.status FROM audit_logs l
@@ -1711,30 +1743,15 @@ app.post('/api/assets', requireLogin, async (req, res) => {
         AND JSON_UNQUOTE(JSON_EXTRACT(IF(JSON_VALID(l.details), l.details, '{}'), '$.creation_request_id')) = ?
         LIMIT 1
       `, [req.session.user.id, requestId]);
-      if (existing.length) return res.status(200).json({ ok: true, ...existing[0] });
+      if (existing.length) {
+        await connection.query(`UPDATE asset_creation_requests SET asset_db_id = ?, asset_id = ?, asset_status = ?
+          WHERE user_id = ? AND request_id = ?`,
+          [existing[0].id, existing[0].asset_id, existing[0].status, req.session.user.id, requestId]);
+        await connection.commit();
+        return res.status(200).json({ ok: true, ...existing[0] });
+      }
     }
-    await connection.beginTransaction();
-
-    const currentYear = new Date().getFullYear();
-    const assetPrefix = `PRIMA-${currentYear}-`;
-
-    const [numberRows] = await connection.query(`
-      SELECT
-        COALESCE(
-          MAX(
-            CAST(
-              SUBSTRING_INDEX(asset_id, '-', -1)
-              AS UNSIGNED
-            )
-          ),
-          0
-        ) AS highest_number
-      FROM assets
-      WHERE asset_id LIKE ?
-    `, [`${assetPrefix}%`]);
-
-    const nextNumber = Number(numberRows[0]?.highest_number || 0) + 1;
-    const assetId = `${assetPrefix}${String(nextNumber).padStart(6, '0')}`;
+    const assetId = await allocateAssetId(connection);
 
     const [result] = await connection.query(`
       INSERT INTO assets (
@@ -1769,6 +1786,9 @@ app.post('/api/assets', requireLogin, async (req, res) => {
     `, [req.session.user.id, String(result.insertId), JSON.stringify({ asset_id: assetId, asset_name: String(asset_name).trim(), creation_request_id: requestId || null })]);
 
     if (employeeId != null) await assignAssets(connection, { asset_ids: [result.insertId], employee_id: employeeId, userId: req.session.user.id });
+    if (requestId) await connection.query(`UPDATE asset_creation_requests SET asset_db_id = ?, asset_id = ?, asset_status = ?
+      WHERE user_id = ? AND request_id = ?`,
+      [result.insertId, assetId, employeeId != null ? 'Assigned' : 'Available', req.session.user.id, requestId]);
     await connection.commit();
     res.status(201).json({ ok: true, id: result.insertId, asset_id: assetId, status: employeeId != null ? 'Assigned' : 'Available', message: 'Asset created successfully.' });
   } catch (error) {
@@ -1788,9 +1808,7 @@ app.post('/api/assets', requireLogin, async (req, res) => {
       error: error.message
     });
   } finally {
-    try {
-      if (creationLock) await connection.query("SELECT RELEASE_LOCK('prima_asset_creation')");
-    } finally { connection.release(); }
+    connection.release();
   }
 });
 
@@ -3709,90 +3727,7 @@ app.post(
       await connection.beginTransaction();
 
 
-      // ========================================================
-      // CURRENT YEAR
-      // ========================================================
 
-      const currentYear =
-        new Date()
-          .getFullYear();
-
-
-   // ========================================================
-// FIND NEXT PRIMA ASSET NUMBER
-// ========================================================
-
-const [
-  assetNumberRows
-] =
-  await connection.query(
-    `
-    SELECT
-      MAX(
-        CAST(
-          SUBSTRING_INDEX(asset_id, '-', -1)
-          AS UNSIGNED
-        )
-      ) AS max_number
-    FROM assets
-    WHERE asset_id LIKE ?
-    `,
-    [
-      `PRIMA-${currentYear}-%`
-    ]
-  );
-
-
-let nextAssetNumber =
-  Number(
-    assetNumberRows[0]?.max_number || 0
-  ) + 1;
-
-
-// ========================================================
-// MAKE SURE GENERATED ASSET ID DOES NOT ALREADY EXIST
-// ========================================================
-
-while (true) {
-
-  const testAssetId =
-    `PRIMA-${currentYear}-${String(
-      nextAssetNumber
-    ).padStart(
-      6,
-      '0'
-    )}`;
-
-
-  const [
-    duplicateAssetRows
-  ] =
-    await connection.query(
-      `
-      SELECT
-        id
-      FROM assets
-      WHERE asset_id = ?
-      LIMIT 1
-      `,
-      [
-        testAssetId
-      ]
-    );
-
-
-  if (
-    duplicateAssetRows.length === 0
-  ) {
-
-    break;
-
-  }
-
-
-  nextAssetNumber++;
-
-}
       // ========================================================
       // EXISTING SERIAL NUMBERS
       // ========================================================
@@ -4218,16 +4153,7 @@ while (true) {
           // GENERATE ASSET ID
           // ----------------------------------------------------
 
-          const assetId =
-            `PRIMA-${currentYear}-${String(
-              nextAssetNumber
-            ).padStart(
-              6,
-              '0'
-            )}`;
-
-
-          nextAssetNumber++;
+          const assetId = await allocateAssetId(connection);
 
 
           // ----------------------------------------------------

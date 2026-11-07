@@ -11,9 +11,10 @@ Starter architecture for a company IT Asset Management System.
 ## First setup
 1. Copy `.env.example` to `.env`.
 2. Create the MySQL database by running `database/schema.sql`.
-3. Run `npm install`.
-4. Start with `npm start`.
-5. Open `http://localhost:3001`.
+3. Apply `migrations/005_asset_id_allocation.sql` to the selected database with asset writers stopped (also required for existing installations). See [local verification](docs/asset-id-verification.md).
+4. Run `npm install`.
+5. Start with `npm start`.
+6. Open `http://localhost:3001`.
 
 ## Python service
 ```powershell

@@ -4,6 +4,9 @@
 // =====================================================
 
 let employees = [];
+let selectedEmployeeRowId = null;
+let employeeListRequest = 0;
+let employeeListLoading = false;
 let departments = [];
 let currentUser = null;
 
@@ -273,7 +276,67 @@ async function loadDepartments() {
 // LOAD EMPLOYEES
 // =====================================================
 
-async function loadEmployees() {
+function updateEmployeeSelection() {
+  const selected = !employeeListLoading && employees.some(employee => Number(employee.id) === selectedEmployeeRowId);
+  document.querySelectorAll('#employeeTableBody tr[data-employee-id]').forEach(row => {
+    const active = selected && Number(row.dataset.employeeId) === selectedEmployeeRowId;
+    row.classList.toggle('employee-row-selected', active);
+    row.setAttribute('aria-selected', String(active));
+    row.setAttribute('aria-disabled', String(employeeListLoading));
+  });
+  if ($('employeeSelectionStatus')) $('employeeSelectionStatus').textContent = selected
+    ? 'Selected: ' + employees.find(employee => Number(employee.id) === selectedEmployeeRowId).full_name
+    : 'No employee selected';
+  for (const [id, adminOnly] of [['selectedEmployeeViewBtn', false], ['selectedEmployeeEditBtn', true], ['selectedEmployeeDeleteBtn', true]]) {
+    const button = $(id);
+    if (button) button.disabled = !selected || (adminOnly && currentUser?.role !== 'admin');
+  }
+}
+
+function clearEmployeeSelection() {
+  selectedEmployeeRowId = null;
+  updateEmployeeSelection();
+}
+
+function selectEmployeeRow(id) {
+  if (employeeListLoading || !employees.some(employee => Number(employee.id) === Number(id))) return;
+  selectedEmployeeRowId = selectedEmployeeRowId === Number(id) ? null : Number(id);
+  updateEmployeeSelection();
+}
+
+function setupEmployeeSelection() {
+  const body = $('employeeTableBody');
+  body.onclick = event => {
+    const row = event.target.closest('tr[data-employee-id]');
+    if (row) selectEmployeeRow(row.dataset.employeeId);
+  };
+  body.onkeydown = event => {
+    const row = event.target.closest('tr[data-employee-id]');
+    if (!row) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (!event.repeat) selectEmployeeRow(row.dataset.employeeId);
+    } else if (['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
+      event.preventDefault();
+      const rows = [...body.querySelectorAll('tr[data-employee-id]')];
+      const index = rows.indexOf(row);
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? rows.length - 1 : Math.max(0, Math.min(rows.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)));
+      rows[next]?.focus();
+    }
+  };
+  for (const [id, action] of [['selectedEmployeeViewBtn', viewEmployee], ['selectedEmployeeEditBtn', editEmployee], ['selectedEmployeeDeleteBtn', deleteEmployee]]) {
+    $(id).onclick = () => {
+      if (!$(id).disabled && !employeeListLoading && employees.some(employee => Number(employee.id) === selectedEmployeeRowId)) action(selectedEmployeeRowId);
+    };
+  }
+  updateEmployeeSelection();
+}
+
+async function loadEmployees(options = {}) {
+  const request = ++employeeListRequest;
+  employeeListLoading = true;
+  if (options?.preserveSelection !== true) selectedEmployeeRowId = null;
+  updateEmployeeSelection();
 
   const params = new URLSearchParams();
 
@@ -304,6 +367,8 @@ async function loadEmployees() {
     await fetch(`/api/employees?${params.toString()}`);
 
 
+  if (request !== employeeListRequest) return;
+
   if (!response.ok) {
 
     const data =
@@ -316,7 +381,10 @@ async function loadEmployees() {
   }
 
 
-  employees = await response.json();
+  const rows = await response.json();
+  if (request !== employeeListRequest) return;
+  employees = rows;
+  employeeListLoading = false;
 
   renderEmployees();
 }
@@ -327,6 +395,7 @@ async function loadEmployees() {
 // =====================================================
 
 function renderEmployees() {
+  if (!employees.some(employee => Number(employee.id) === selectedEmployeeRowId)) selectedEmployeeRowId = null;
 
   const countElement =
     $('employeeCount');
@@ -349,7 +418,7 @@ function renderEmployees() {
     tableBody.innerHTML = `
       <tr>
         <td
-          colspan="7"
+          colspan="6"
           class="text-center text-muted py-5">
 
           No employees found.
@@ -358,6 +427,7 @@ function renderEmployees() {
       </tr>
     `;
 
+    updateEmployeeSelection();
     return;
   }
 
@@ -366,7 +436,7 @@ function renderEmployees() {
 
     employees.map(employee => `
 
-      <tr>
+      <tr data-employee-id="${Number(employee.id)}" tabindex="0" aria-selected="false">
 
         <td class="fw-semibold">
           ${escapeHtml(employee.employee_id)}
@@ -392,46 +462,12 @@ function renderEmployees() {
           ${statusBadge(employee.status)}
         </td>
 
-        <td class="text-end">
-
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-primary view-employee-btn"
-            data-id="${employee.id}">
-
-            <i class="bi bi-eye me-1"></i>
-            View
-
-          </button>
-          ${currentUser?.role === 'admin' ? `<button type="button" class="btn btn-sm btn-outline-primary edit-employee-btn" data-id="${employee.id}"><i class="bi bi-pencil-square me-1"></i>Edit</button>
-            <button type="button" class="btn btn-sm btn-danger delete-employee-btn" data-id="${employee.id}"><i class="bi bi-trash me-1"></i>Delete</button>` : ''}
-
-        </td>
-
       </tr>
 
     `).join('');
 
 
-  document.querySelectorAll('.delete-employee-btn').forEach(button => {
-    button.addEventListener('click', () => deleteEmployee(button.dataset.id));
-  });
-
-  document.querySelectorAll('.edit-employee-btn').forEach(button => {
-    button.addEventListener('click', () => editEmployee(button.dataset.id));
-  });
-
-  document
-    .querySelectorAll('.view-employee-btn')
-    .forEach(button => {
-
-      button.addEventListener('click', () => {
-
-        viewEmployee(button.dataset.id);
-
-      });
-
-    });
+  updateEmployeeSelection();
 }
 
 
@@ -563,6 +599,7 @@ async function confirmDeleteEmployee() {
     selectedEmployeeAssets = [];
     viewedEmployeeDbId = null;
     employeeToDelete = null;
+    clearEmployeeSelection();
     $('employeeDeleteSuccessMessage').textContent = result.message;
     $('employeeDeleteSuccessNote').textContent = result.preserved_statuses?.length
       ? 'Status retained for: ' + result.preserved_statuses.map(asset => asset.asset_id + ' (' + asset.status + ')').join(', ') + '. These assets are not Available.' : '';
@@ -1376,7 +1413,7 @@ async function saveEmployee(event) {
     prepareEmployeeForm();
     showAlert(result.message || (editId ? 'Employee updated successfully.' : 'Employee created successfully.'));
     try {
-      await loadEmployees();
+      await loadEmployees({ preserveSelection: Boolean(editId) });
     } catch (error) {
       showAlert('Employee saved, but the list could not refresh: ' + error.message, 'warning');
     }
@@ -3729,6 +3766,7 @@ window.onafterprint =
 // =====================================================
 
 async function init() {
+  setupEmployeeSelection();
 
   try {
 
@@ -3936,6 +3974,9 @@ async function init() {
       .addEventListener(
         'input',
         () => {
+          ++employeeListRequest;
+          employeeListLoading = true;
+          clearEmployeeSelection();
 
           clearTimeout(
             window.employeeSearchTimer

@@ -7,11 +7,12 @@ const vm = require('node:vm');
 const mysql = require('mysql2/promise');
 const { archiveEmployee, RETURN_REASON } = require('../services/employee-deletion');
 const { returnAssignment } = require('../services/asset-return');
+const { assignAssets } = require('../services/asset-assignment');
 const source = fs.readFileSync('server.js', 'utf8').replace(/\r\n/g, '\n');
 function endpoint(start, end, method, pool) {
   let handler;
   vm.runInNewContext(source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start))), {
-    app: { [method](...args) { handler = args.at(-1); } }, requireAdmin() {}, requireLogin() {}, pool, returnAssignment, console
+    app: { [method](...args) { handler = args.at(-1); } }, requireAdmin() {}, requireLogin() {}, pool, returnAssignment, assignAssets, console
   });
   return async (id, body = {}, query = {}) => {
     let status = 200, data;

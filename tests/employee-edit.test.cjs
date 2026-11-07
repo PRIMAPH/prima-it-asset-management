@@ -107,6 +107,7 @@ test('browser: edit fields, PUT, refresh filters, duplicate submission, errors, 
       };
     },record);
     const loaded=await page.evaluate(async()=>{
+      employees=[testRecord];renderEmployees();selectEmployeeRow(7);
       await editEmployee(7);
       return {title:$('employeeModalTitle').textContent,button:$('saveEmployeeBtn').textContent,fields:Object.fromEntries(new FormData($('employeeForm')))};
     });
@@ -124,6 +125,7 @@ test('browser: edit fields, PUT, refresh filters, duplicate submission, errors, 
     assert.equal(calls.find(c=>c.method).method,'PUT');
     assert.ok(calls.some(c=>c.url.includes('search=Original&department_id=2&status=active')));
     assert.match(await page.$eval('#employeeTableBody',e=>e.textContent),/Changed/);
+    assert.equal(await page.$eval('tr[data-employee-id="7"]',e=>e.getAttribute('aria-selected')),'true');
     await page.evaluate(async()=>{await editEmployee(7);window.failSave=true;await saveEmployee({preventDefault(){},currentTarget:$('employeeForm')});});
     assert.match(await page.$eval('#employeeFormAlert',e=>e.textContent),/already exists/);
     await page.evaluate(async()=>{
@@ -153,7 +155,7 @@ test('browser: edit fields, PUT, refresh filters, duplicate submission, errors, 
     });
     await page.evaluate(async()=>{
       currentUser={role:'viewer'}; renderEmployees(); const before=calls.length; await editEmployee(7);
-      if(calls.length!==before || document.querySelector('.edit-employee-btn')) throw Error('Non-admin edit exposed');
+      if(calls.length!==before || !$('selectedEmployeeEditBtn').disabled) throw Error('Non-admin edit exposed');
       currentUser={role:'admin'}; $('employeeViewModal').classList.add('show'); await editEmployee(7);
       if(!window.opened || $('employeeViewModal').classList.contains('show')) throw Error('Modal transition failed');
     });

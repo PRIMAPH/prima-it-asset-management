@@ -57,8 +57,9 @@ test('browser: Delete confirmation, cancel, success, errors, double-submit and n
       };
     });
     await page.addScriptTag({content:fs.readFileSync('public/js/employees.js','utf8')});
-    await page.waitForFunction(()=>document.querySelector('.delete-employee-btn'));
-    await page.click('.delete-employee-btn');
+    await page.waitForSelector('tr[data-employee-id="7"]');
+    await page.click('tr[data-employee-id="7"]');
+    await page.click('#selectedEmployeeDeleteBtn');
     await page.waitForSelector('#employeeDeleteModal.show');
     assert.equal(await page.$eval('#deleteEmployeeName',e=>e.textContent),'Test <Employee>');
     assert.equal(await page.$eval('#deleteEmployeeAssetCount',e=>e.textContent),'2');
@@ -103,7 +104,7 @@ test('browser: Delete confirmation, cancel, success, errors, double-submit and n
     await page.evaluate(async()=>{
       currentUser={role:'viewer'};employees=[testEmployee];renderEmployees();
       const before=calls.length;await deleteEmployee(7);await confirmDeleteEmployee();
-      if(calls.length!==before||document.querySelector('.delete-employee-btn'))throw Error('Non-admin delete exposed');
+      if(calls.length!==before||!$('selectedEmployeeDeleteBtn').disabled)throw Error('Non-admin delete exposed');
     });
     assert.deepEqual(errors,[]);
   }finally{await browser.close();}

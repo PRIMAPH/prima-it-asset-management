@@ -840,7 +840,7 @@
       <div class="row g-2">
 
 
-        <div class="col-lg-6">
+        <div class="col-lg-4">
 
           <label class="form-label small text-muted">
             Search
@@ -927,7 +927,15 @@
         </div>
 
 
-        <div class="col-lg-2 d-flex align-items-end">
+        <div class="col-md-3 col-lg-2">
+          <label class="form-label small text-muted" for="locationFilter">Location</label>
+          <select id="locationFilter" class="form-select">
+            <option value="">All Locations</option>
+            <option value="none">No Location</option>
+          </select>
+        </div>
+
+        <div class="col-md-3 col-lg-2 d-flex align-items-end">
 
           <button
             id="clearFiltersBtn"
@@ -959,7 +967,7 @@
 
 
       <div
-        class="d-flex justify-content-between align-items-center mb-3"
+        class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3"
       >
 
         <div>
@@ -980,8 +988,11 @@
         </div>
 
 
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
 
+
+          <span id="assetSelectionCount" class="small text-muted align-self-center" role="status" aria-live="polite">0 assets selected</span>
+          <button id="clearAssetSelectionBtn" type="button" class="btn btn-outline-secondary btn-sm" disabled>Clear Selection</button>
 
           <button
             id="bulkLabelBtn"
@@ -1127,6 +1138,13 @@
         ==================================================== -->
 
         <div class="row g-3">
+
+          <div class="col-12" id="assetIdPreviewGroup">
+            <label class="form-label" for="assetIdPreview">Asset ID (Auto-Generated)</label>
+            <input id="assetIdPreview" class="form-control" readonly aria-describedby="assetIdPreviewHelp" placeholder="Loading Asset ID...">
+            <button id="assetIdPreviewRetry" type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="loadAssetIdPreview()" hidden>Retry</button>
+            <div id="assetIdPreviewHelp" class="form-text text-muted">Preview only. Final Asset ID is confirmed upon saving.</div>
+          </div>
 
           <div class="col-md-6">
             <label class="form-label">
@@ -2619,7 +2637,7 @@
 ========================================================= -->
 
 <script src="/js/asset-return.js?v=1"></script>
-<script src="/js/assets.js?v=13"></script>
+<script src="/js/assets.js?v=18"></script>
 
 
 <!-- =========================================================

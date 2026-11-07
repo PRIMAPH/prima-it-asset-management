@@ -4,6 +4,8 @@
 // ============================================================
 
 let assets = [];
+const selectedAssetIds = new Set();
+let assetListRequest = 0;
 let categories = [];
 let locations = [];
 let employees = [];
@@ -131,11 +133,13 @@ async function loadMe() {
   const response = await fetch('/api/auth/me');
 
   if (!response.ok) {
+    clearAssetSelection();
     window.location.href = '/';
     return;
   }
 
   const user = await response.json();
+  if (currentUser && String(currentUser.id) !== String(user.id)) clearAssetSelection();
   currentUser = user;
 
   if ($('userName')) {
@@ -197,6 +201,14 @@ async function loadLocations() {
 
   locations = await response.json();
 
+  if ($('locationFilter')) {
+    const selected = $('locationFilter').value;
+    $('locationFilter').innerHTML =
+      '<option value="">All Locations</option><option value="none">No Location</option>' +
+      locations.map(location => `<option value="${location.id}">${escapeHtml(location.name)}</option>`).join('');
+    $('locationFilter').value = selected;
+  }
+
   if ($('assetLocation')) {
     $('assetLocation').innerHTML =
       `<option value="">Select location</option>` +
@@ -212,6 +224,8 @@ async function loadLocations() {
 // LOAD ASSETS
 // ============================================================
 async function loadAssets() {
+  const request = ++assetListRequest;
+  updateBulkButtons();
   const params = new URLSearchParams();
 
   const search =
@@ -237,10 +251,15 @@ async function loadAssets() {
     params.set('category_id', categoryId);
   }
 
+  const locationId = $('locationFilter')?.value || '';
+  if (locationId) params.set('location_id', locationId);
+
   const response =
     await fetch(
       `/api/assets?${params.toString()}`
     );
+
+  if (request !== assetListRequest) return;
 
   if (!response.ok) {
     const data =
@@ -254,7 +273,9 @@ async function loadAssets() {
     );
   }
 
-  assets = await response.json();
+  const rows = await response.json();
+  if (request !== assetListRequest) return;
+  assets = rows;
 
   renderAssets();
 }
@@ -273,9 +294,6 @@ function renderAssets() {
       `${assets.length} asset${assets.length === 1 ? '' : 's'}`;
   }
 
-  if ($('selectAll')) {
-    $('selectAll').checked = false;
-  }
 
   if (!assets.length) {
     tbody.innerHTML = `
@@ -303,6 +321,7 @@ function renderAssets() {
             class="form-check-input asset-check"
             type="checkbox"
             value="${asset.id}"
+            ${selectedAssetIds.has(Number(asset.id)) ? 'checked' : ''}
           >
         </td>
 
@@ -421,15 +440,7 @@ function renderAssets() {
 // Supports dynamically loaded asset rows
 // ============================================================
 
-document.addEventListener('change', function (event) {
 
-  if (event.target.matches('.asset-check')) {
-
-    updateBulkButtons();
-
-  }
-
-});
 
   document
     .querySelectorAll('.view-btn')
@@ -599,47 +610,77 @@ async function openAssetFromUrl() {
 // SELECTED IDS
 // ============================================================
 function selectedIds() {
-  return [
-    ...document.querySelectorAll(
-      '.asset-check:checked'
-    )
-  ]
-    .map(
-      checkbox =>
-        Number(checkbox.value)
-    )
-    .filter(
-      id =>
-        Number.isInteger(id)
-    );
+  return [...selectedAssetIds];
 }
 
-// ============================================================
-// UPDATE BULK BUTTONS - DEBUG
-// ============================================================
+function clearAssetSelection() {
+  selectedAssetIds.clear();
+  window.currentAssignAssetIds = [];
+  window.bulkAssignAssetIds = [];
+  window.currentLabelAssets = [];
+  updateBulkButtons();
+}
 
 function updateBulkButtons() {
-
-  const ids = selectedIds();
-
-  console.log('SELECTED IDS:', ids);
-  console.log('SELECTED COUNT:', ids.length);
-
-  const assignBtn = $('assignBtn');
-  const bulkLabelBtn = $('bulkLabelBtn');
-
-  console.log('assignBtn:', assignBtn);
-  console.log('bulkLabelBtn:', bulkLabelBtn);
-
-  if (assignBtn) {
-    assignBtn.disabled = ids.length === 0;
+  const count = selectedAssetIds.size;
+  if ($('assignBtn')) $('assignBtn').disabled = !count;
+  if ($('bulkLabelBtn')) $('bulkLabelBtn').disabled = !count;
+  if ($('clearAssetSelectionBtn')) $('clearAssetSelectionBtn').disabled = !count;
+  if ($('assetSelectionCount')) $('assetSelectionCount').textContent = count + (count === 1 ? ' asset selected' : ' assets selected');
+  const visible = [...document.querySelectorAll('#assetTableBody .asset-check')];
+  visible.forEach(box => { box.checked = selectedAssetIds.has(Number(box.value)); });
+  const checked = visible.filter(box => box.checked).length;
+  if ($('selectAll')) {
+    $('selectAll').checked = visible.length > 0 && checked === visible.length;
+    $('selectAll').indeterminate = checked > 0 && checked < visible.length;
+    $('selectAll').disabled = !visible.length;
   }
-
-  if (bulkLabelBtn) {
-    bulkLabelBtn.disabled = ids.length === 0;
-  }
-
 }
+
+document.addEventListener('change', event => {
+  if (!event.target.matches('#assetTableBody .asset-check')) return;
+  const id = Number(event.target.value);
+  if (!Number.isSafeInteger(id) || id <= 0) return;
+  if (event.target.checked) selectedAssetIds.add(id);
+  else selectedAssetIds.delete(id);
+  updateBulkButtons();
+});
+document.addEventListener('click', event => {
+  if (event.target.closest('#clearAssetSelectionBtn')) clearAssetSelection();
+});
+// In-memory only: never restore another user's selection through the back cache.
+window.addEventListener('pagehide', clearAssetSelection);
+
+async function verifyAssetSelectionUser() {
+  const previousId = currentUser?.id;
+  const user = await loadMe();
+  if (!user || (previousId != null && String(previousId) !== String(user.id))) {
+    clearAssetSelection();
+    throw new Error('Your session changed. Please select the assets again.');
+  }
+}
+
+async function fetchSelectedAssets(ids) {
+  const results = await Promise.all(ids.map(async id => {
+    try {
+      const response = await fetch('/api/assets/' + id, { credentials: 'include', cache: 'no-store' });
+      if (response.status === 404) {
+        selectedAssetIds.delete(Number(id));
+        throw new Error('Asset #' + id + ' no longer exists and was removed from selection.');
+      }
+      if (!response.ok) throw new Error('Unable to verify asset #' + id + '. Please retry.');
+      const data = await response.json();
+      const asset = data.asset || data;
+      if (Number(asset.id) !== Number(id)) throw new Error('Invalid asset response for #' + id);
+      return { asset };
+    } catch (error) { return { error: error.message }; }
+  }));
+  updateBulkButtons();
+  const errors = results.filter(result => result.error);
+  if (errors.length) throw new Error(errors.map(result => result.error).join(' '));
+  return results.map(result => result.asset);
+}
+
 // ============================================================
 // LOCAL DATE/TIME
 // ============================================================
@@ -716,6 +757,8 @@ async function deleteAsset(asset, detailsModal) {
       detailsModal.hide();
     }
 
+    selectedAssetIds.delete(assetId);
+    updateBulkButtons();
     await loadAssets();
     showAlert(result.message || 'Asset deleted successfully.', 'success');
   } catch (error) {
@@ -2050,6 +2093,7 @@ async function editAssetFromView(id) {
 
         delete form.dataset.createdId;
         form.dataset.editId = String(asset.id);
+        $('assetIdPreviewGroup').hidden = true;
         $('newAssetAssignment').hidden = true;
         $('newEmployeeSearch').required = false;
 
@@ -2281,6 +2325,33 @@ async function editAssetFromView(id) {
 // OPEN ADD ASSET MODAL
 // ============================================================
 
+async function loadAssetIdPreview() {
+    const form = $('assetForm');
+    const preview = $('assetIdPreview');
+    const retry = $('assetIdPreviewRetry');
+    const token = String(Number(form.dataset.previewToken || 0) + 1);
+    form.dataset.previewToken = token;
+    preview.value = '';
+    preview.placeholder = 'Loading Asset ID...';
+    preview.setAttribute('aria-busy', 'true');
+    retry.hidden = true;
+    const isCurrent = () => form.dataset.previewToken === token && !form.dataset.editId && !form.dataset.createdId;
+    try {
+        const response = await fetch('/api/assets/next-id', { credentials: 'include', cache: 'no-store' });
+        if (!response.ok) throw new Error('Preview unavailable');
+        const data = await response.json();
+        if (typeof data.asset_id !== 'string' || !data.asset_id.trim()) throw new Error('Invalid preview response');
+        if (isCurrent()) preview.value = data.asset_id;
+    } catch (error) {
+        if (isCurrent()) {
+            preview.placeholder = 'Unable to load Asset ID';
+            retry.hidden = false;
+        }
+    } finally {
+        if (form.dataset.previewToken === token) preview.setAttribute('aria-busy', 'false');
+    }
+}
+
 function openAddAssetModal() {
 
     const modalElement =
@@ -2312,6 +2383,8 @@ function openAddAssetModal() {
     delete form.dataset.createdId;
     form.reset();
     setupNewAssetAssignment();
+    $('assetIdPreviewGroup').hidden = false;
+    loadAssetIdPreview();
 
     // --------------------------------------------------------
     // Reset image state
@@ -3961,6 +4034,7 @@ async function saveAsset(event) {
 
 
             form.dataset.createdId = String(newAssetId);
+            $('assetIdPreview').value = data.asset_id;
 
             console.log(
                 'New asset ID:',
@@ -3994,9 +4068,7 @@ async function saveAsset(event) {
 
 
             showAlert(
-                imageUploadWarning || (payload.employee_id
-                    ? `Asset added and assigned successfully to ${assignedEmployeeName}.`
-                    : 'Asset added successfully.'),
+                `Asset ${data.asset_id} added successfully!` + (imageUploadWarning ? ` ${imageUploadWarning}` : (payload.employee_id ? ` Assigned to ${assignedEmployeeName}.` : '')),
                 imageUploadWarning ? 'warning' : 'success'
             );
 
@@ -4204,76 +4276,17 @@ async function openAssignModal(assetIds = null) {
   // ----------------------------------------------------------
 
   let assetResults = [];
-
+  window.currentAssignAssetIds = [];
+  window.bulkAssignAssetIds = [];
   try {
-
-    assetResults =
-      await Promise.all(
-
-        ids.map(async id => {
-
-          try {
-
-            const response =
-              await fetch(
-                `/api/assets/${id}`,
-                {
-                  credentials: 'include'
-                }
-              );
-
-            if (!response.ok) {
-
-              throw new Error(
-                `Unable to load asset ${id}.`
-              );
-
-            }
-
-            const data =
-              await response.json();
-
-            const asset =
-              data.asset ||
-              data;
-
-            return {
-              ok: true,
-              asset: asset
-            };
-
-          } catch (error) {
-
-            console.error(
-              `Unable to load asset ${id}:`,
-              error
-            );
-
-            return {
-              ok: false,
-              id: id,
-              error: error.message
-            };
-
-          }
-
-        })
-
-      );
-
+    await verifyAssetSelectionUser();
+    const checkedAssets = await fetchSelectedAssets(ids);
+    const unavailable = checkedAssets.filter(asset => asset.status !== 'Available' || asset.custodian_id);
+    if (unavailable.length) throw new Error('Nothing was assigned. Unavailable assets: ' + unavailable.map(asset => asset.asset_id + ' (' + asset.status + ')').join(', ') + '. Deselect these assets or return them before retrying.');
+    assetResults = checkedAssets.map(asset => ({ ok: true, asset }));
   } catch (error) {
-
-    console.error(
-      'Unable to check selected assets:',
-      error
-    );
-
-    selectedAssetsList.innerHTML = `
-      <div class="alert alert-danger mb-0">
-        Unable to check selected assets.
-      </div>
-    `;
-
+    selectedAssetsList.textContent = error.message;
+    showAlert(error.message, 'warning');
     return;
   }
 
@@ -4786,7 +4799,7 @@ assignAssetsModal.show();
 
 //     for (const assetId of ids) {
 
-//       const response =
+//     const response =
 //         await fetch(
 //           `/api/assets/${assetId}/assign`,
 //           {
@@ -5001,6 +5014,11 @@ async function assignAssets(event) {
 
   try {
 
+    await verifyAssetSelectionUser();
+    const checkedAssets = await fetchSelectedAssets(ids);
+    const unavailable = checkedAssets.filter(asset => asset.status !== 'Available' || asset.custodian_id);
+    if (unavailable.length) throw new Error('Nothing was assigned. Unavailable assets: ' + unavailable.map(asset => asset.asset_id + ' (' + asset.status + ')').join(', '));
+
     const response =
       await fetch(
         '/api/assets/assign',
@@ -5063,6 +5081,9 @@ async function assignAssets(event) {
     console.log(
       'ASSETS ASSIGNED SUCCESSFULLY'
     );
+
+    ids.forEach(id => selectedAssetIds.delete(id));
+    updateBulkButtons();
 
     // Clear direct assignment
     directAssignAssetId = null;
@@ -5189,28 +5210,15 @@ function openReturnModal(assetId) {
 // SELECT ALL
 // ============================================================
 function setupSelectAll() {
-
-  $('selectAll')
-    ?.addEventListener(
-      'change',
-      event => {
-
-        document
-          .querySelectorAll(
-            '.asset-check'
-          )
-          .forEach(
-            checkbox => {
-              checkbox.checked =
-                event.target.checked;
-            }
-          );
-
-        updateBulkButtons();
-
-      }
-    );
-
+  if (!$('selectAll')) return;
+  $('selectAll').onchange = event => {
+    document.querySelectorAll('#assetTableBody .asset-check').forEach(box => {
+      const id = Number(box.value);
+      if (event.target.checked) selectedAssetIds.add(id);
+      else selectedAssetIds.delete(id);
+    });
+    updateBulkButtons();
+  };
 }
 // ============================================================
 // EMPLOYEE PICKER (Assign Modal)
@@ -5364,6 +5372,13 @@ function setupSearch() {
       }
     );
 
+  $('locationFilter')?.addEventListener('change', () => {
+    loadAssets().catch(error => {
+      console.error(error);
+      showAlert(error.message || 'Unable to filter assets.', 'danger');
+    });
+  });
+
   $('clearFiltersBtn')
     ?.addEventListener(
       'click',
@@ -5381,6 +5396,10 @@ function setupSearch() {
 
         if ($('categoryFilter')) {
           $('categoryFilter').value = '';
+        }
+
+        if ($('locationFilter')) {
+          $('locationFilter').value = '';
         }
 
         button.disabled = true;
@@ -5899,21 +5918,15 @@ function updateLabelTypeDescription() {
   el.textContent = text[getSelectedLabelType()] || text.both;
 }
 
-function openLabelModal() {
-
+async function openLabelModal() {
   const ids = selectedIds();
-
-  if (!ids.length) {
-    showAlert('Please select at least one asset.', 'warning');
-    return;
-  }
-
-  const selectedAssets =
-    assets.filter(asset => ids.includes(Number(asset.id)));
-
-  window.inventoryLabelContext = null;
-
-  openLabelModalForAssets(selectedAssets);
+  if (!ids.length) return showAlert('Please select at least one asset.', 'warning');
+  try {
+    await verifyAssetSelectionUser();
+    const selectedAssets = await fetchSelectedAssets(ids);
+    window.inventoryLabelContext = null;
+    openLabelModalForAssets(selectedAssets);
+  } catch (error) { showAlert(error.message, 'danger'); }
 }
 
 function openLabelModalForAssets(selectedAssets) {
@@ -6186,7 +6199,7 @@ function renderLabelPreview(selectedAssets) {
 // 4 COLUMNS × 5 ROWS = 20 LABELS PER PAGE
 // ============================================================
 
-function printLabels() {
+async function printLabels() {
 
   const selectedAssets =
     window.currentLabelAssets || [];
@@ -6242,12 +6255,23 @@ function printLabels() {
   }
 
 
+  try {
+    await verifyAssetSelectionUser();
+    const freshAssets = await fetchSelectedAssets(selectedAssets.map(asset => Number(asset.id)));
+    window.currentLabelAssets = freshAssets;
+    renderLabelPreview(freshAssets);
+  } catch (error) {
+    printWindow.close();
+    showAlert(error.message, 'danger');
+    return;
+  }
+
   // ----------------------------------------------------------
   // CLONE CURRENT PREVIEW
   // ----------------------------------------------------------
 
   const clonedPrintArea =
-    sourcePrintArea.cloneNode(
+    $('labelPrintArea').cloneNode(
       true
     );
 
@@ -6260,7 +6284,7 @@ function printLabels() {
   // ----------------------------------------------------------
 
   const sourceQrCodes =
-    sourcePrintArea
+    $('labelPrintArea')
       .querySelectorAll(
         '.asset-label-qr'
       );
@@ -8926,397 +8950,14 @@ window.addEventListener(
 // Only Available assets can be assigned
 // ============================================================
 
-document.addEventListener('click', async function (event) {
-
-  const button =
-    event.target.closest('#assignBtn');
-
-  if (!button) {
-    return;
-  }
-
-  const selected =
-    selectedIds();
-
-  console.log(
-    'ASSIGN SELECTED CLICKED:',
-    selected
-  );
-
-  if (!selected.length) {
-
-    showAlert(
-      'Please select at least one asset.',
-      'warning'
-    );
-
-    return;
-  }
-
+document.addEventListener('click', async event => {
+  const button = event.target.closest('#assignBtn');
+  if (!button || button.disabled) return;
+  const ids = selectedIds();
+  if (!ids.length) return;
   button.disabled = true;
-
-  const originalHTML =
-    button.innerHTML;
-
-  button.innerHTML = `
-    <span class="spinner-border spinner-border-sm me-1"></span>
-    Checking...
-  `;
-
-  try {
-
-    // --------------------------------------------------------
-    // GET CURRENT ASSET DATA
-    // --------------------------------------------------------
-
-    const results =
-      await Promise.all(
-
-        selected.map(async id => {
-
-          try {
-
-            const response =
-              await fetch(
-                `/api/assets/${id}`,
-                {
-                  credentials: 'include'
-                }
-              );
-
-            if (!response.ok) {
-
-              throw new Error(
-                `Unable to load asset ${id}.`
-              );
-
-            }
-
-            const data =
-              await response.json();
-
-            const asset =
-              data.asset ||
-              data;
-
-            return {
-              ok: true,
-              asset
-            };
-
-          } catch (error) {
-
-            console.error(
-              `Unable to check asset ${id}:`,
-              error
-            );
-
-            return {
-              ok: false,
-              id,
-              error
-            };
-
-          }
-
-        })
-
-      );
-
-    // --------------------------------------------------------
-    // SEPARATE AVAILABLE / UNAVAILABLE
-    // --------------------------------------------------------
-
-    const availableAssets = [];
-    const unavailableAssets = [];
-
-    results.forEach(result => {
-
-      if (!result.ok) {
-
-        unavailableAssets.push({
-          id: result.id,
-          reason: 'Unable to load asset information.'
-        });
-
-        return;
-      }
-
-      const asset =
-        result.asset;
-
-      const status =
-        String(
-          asset.status || ''
-        ).trim();
-
-      if (status === 'Available') {
-
-        availableAssets.push(asset);
-
-      } else {
-
-       unavailableAssets.push({
-  id: asset.id,
-
-  asset_id:
-    asset.asset_id ||
-    `Asset #${asset.id}`,
-
-  asset_name:
-    asset.asset_name ||
-    'Unnamed Asset',
-
-  status:
-    status ||
-    'Unknown',
-
-  // Current active custodian
-  custodian:
-    asset.custodian_name ||
-    '',
-
-  // Current custodian employee ID
-  custodianEmployeeId:
-    asset.custodian_employee_id ||
-    '',
-
-  // Current custodian department
-  department:
-    asset.department_name ||
-    ''
-});
-
-      }
-
-    });
-
-    console.log(
-      'AVAILABLE ASSETS:',
-      availableAssets
-    );
-
-    console.log(
-      'UNAVAILABLE ASSETS:',
-      unavailableAssets
-    );
-
-    // --------------------------------------------------------
-    // ALL SELECTED ASSETS ARE UNAVAILABLE
-    // --------------------------------------------------------
-
-   if (!availableAssets.length) {
-
-const unavailableText = unavailableAssets
-  .map(asset => {
-
-    const assetTag =
-      asset.asset_id ||
-      `Asset #${asset.id}`;
-
-    const status =
-      asset.status ||
-      'Unavailable';
-
-    const custodian =
-      asset.custodian ||
-      '';
-
-    const employeeId =
-      asset.custodianEmployeeId ||
-      '';
-
-    const department =
-      asset.department ||
-      '';
-
-    let text =
-      `${assetTag} — ${status}`;
-
-    if (custodian) {
-      text +=
-        ` — Current Custodian: ${custodian}`;
-    }
-
-    if (employeeId) {
-      text +=
-        ` — Employee ID: ${employeeId}`;
-    }
-
-    if (department) {
-      text +=
-        ` — Department: ${department}`;
-    }
-
-    return text;
-
-  })
-  .join('\n');
-
-showAlert(
-  `None of the selected assets are available for assignment.\n\n` +
-  unavailableText,
-  'warning'
-);
-
-return;
-
-  return;
-}
-
-    // --------------------------------------------------------
-    // WARN ABOUT UNAVAILABLE ASSETS
-    // --------------------------------------------------------
-
-    if (unavailableAssets.length) {
-
-      const details =
-        unavailableAssets
-          .map(asset => {
-
-            return `
-              <div class="small">
-                <strong>
-                  ${escapeHtml(
-                    asset.asset_id ||
-                    `Asset #${asset.id}`
-                  )}
-                </strong>
-                —
-                ${escapeHtml(
-                  asset.status ||
-                  asset.reason ||
-                  'Unavailable'
-                )}
-              </div>
-            `;
-
-          })
-          .join('');
-
-const unavailableText = unavailableAssets
-  .map(asset => {
-
-    const assetTag =
-      asset.asset_id ||
-      `Asset #${asset.id}`;
-
-    const status =
-      asset.status ||
-      'Unavailable';
-
-    const custodian =
-      asset.custodian ||
-      '';
-
-    const employeeId =
-      asset.custodianEmployeeId ||
-      '';
-
-    const department =
-      asset.department ||
-      '';
-
-    let text =
-      `${assetTag} — ${status}`;
-
-    if (custodian) {
-      text +=
-        ` — Current Custodian: ${custodian}`;
-    }
-
-    if (employeeId) {
-      text +=
-        ` — Employee ID: ${employeeId}`;
-    }
-
-    if (department) {
-      text +=
-        ` — Department: ${department}`;
-    }
-
-    return text;
-
-  })
-  .join('\n');
-
-showAlert(
-  `None of the selected assets are available for assignment.\n\n` +
-  unavailableText,
-  'warning'
-);
-
-return;
-    }
-
-    // --------------------------------------------------------
-    // ONLY PASS AVAILABLE ASSETS
-    // --------------------------------------------------------
-
-    const availableIds =
-      availableAssets
-        .map(asset =>
-          Number(asset.id)
-        )
-        .filter(id =>
-          Number.isInteger(id) &&
-          id > 0
-        );
-
-    console.log(
-      'ASSETS THAT WILL BE ASSIGNED:',
-      availableIds
-    );
-
-    if (!availableIds.length) {
-
-      showAlert(
-        'No available assets remain selected.',
-        'warning'
-      );
-
-      return;
-    }
-
-    // Store ONLY available assets
-    window.bulkAssignAssetIds =
-      availableIds;
-
-    window.currentAssignAssetIds =
-      availableIds;
-
-    // --------------------------------------------------------
-    // OPEN ASSIGNMENT MODAL
-    // --------------------------------------------------------
-
-    await openAssignModal(
-      availableIds
-    );
-
-  } catch (error) {
-
-    console.error(
-      'Bulk assignment validation error:',
-      error
-    );
-
-    showAlert(
-      error.message ||
-      'Unable to check selected assets.',
-      'danger'
-    );
-
-  } finally {
-
-    button.disabled = false;
-
-    button.innerHTML =
-      originalHTML;
-
-    updateBulkButtons();
-
-  }
-
+  try { await openAssignModal(ids); }
+  finally { updateBulkButtons(); }
 });
 // ============================================================
 // LABEL MODAL EVENT WIRING
