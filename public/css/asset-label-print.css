@@ -1,0 +1,170 @@
+
+.qr-search {
+  max-width: 30rem;
+}
+
+.qr-picker {
+  max-height: 32vh;
+  overflow: auto;
+}
+
+.qr-picker th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ui-surface-raised);
+}
+
+#qrPrintSheets {
+  overflow-x: auto;
+}
+
+/* A4 SHEET */
+.qr-sheet {
+  box-sizing: border-box;
+  width: 210mm;
+  height: 297mm;
+  padding: 3mm;
+  margin: 0 auto 1.5rem;
+
+  background: #fff;
+  color: #000;
+
+  display: grid;
+  grid-template-columns: repeat(5, 40mm);
+  grid-template-rows: repeat(12, 18.5mm);
+
+  column-gap: 0.5mm;
+  row-gap: 0.3mm;
+  align-content: start;
+  justify-content: center;
+}
+
+/* COMPACT LABEL BOX */
+.qr-small-label {
+  box-sizing: border-box;
+  width: 40mm;
+  height: 18.5mm;
+  padding: 0.3mm;
+
+  border: 0.15mm solid #888;
+  border-radius: 0.8mm;
+
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.5mm;
+
+  overflow: hidden;
+  break-inside: avoid;
+
+  font-family: Arial, sans-serif;
+  background: #fff;
+  color: #000;
+}
+
+/* LEFT QR */
+.qr-left {
+  flex: 0 0 17mm;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0;
+  margin: 0;
+}
+
+.qr-symbol {
+  display: block;
+  width: 17mm;
+  height: 17mm;
+  flex: none;
+  image-rendering: pixelated;
+}
+
+/* RIGHT TEXT */
+
+.qr-right {
+  flex: 1;
+  min-width: 0;
+  height: 17mm;              /* Same height as QR */
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;  /* Center text vertically */
+  align-self: flex-start;
+
+  gap: 0.5mm;
+  padding: 0;
+  margin: 0;
+
+  text-align: left;
+}
+
+
+/* COMPANY NAME */
+
+.qr-company {
+  font-size: 7.5pt;
+  font-weight: 500;
+  line-height: 1.05;
+  margin: 0;
+  padding: 0;
+}
+
+.qr-company span {
+  display: block;
+  white-space: nowrap;
+}
+
+.qr-digits {
+  font-size: 11pt;
+  font-weight: 800;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+}
+
+
+/* PRINT SETTINGS */
+@page {
+  size: A4 portrait;
+  margin: 3mm;
+}
+
+@media print {
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .screen-only,
+  #sidebar {
+    display: none !important;
+  }
+
+  .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    animation: none !important;
+  }
+
+  #qrPrintSheets {
+    overflow: visible;
+  }
+
+  .qr-sheet {
+    width: 204mm;
+    height: 291mm;
+    padding: 0;
+    margin: 0;
+    break-after: page;
+    break-inside: avoid;
+  }
+
+  .qr-sheet:last-child {
+    break-after: auto;
+  }
+}

@@ -3,6 +3,20 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const puppeteer = require('puppeteer');
 
+test('existing inventory reprint links redirect to the dedicated page with audit context', async () => {
+  const source = fs.readFileSync('public/js/assets.js', 'utf8');
+  const start = source.indexOf('async function openAssetFromUrl()');
+  const end = source.indexOf('function selectedIds()', start);
+  let destination;
+  await require('node:vm').runInNewContext(source.slice(start, end) + '\nopenAssetFromUrl();', {
+    URLSearchParams, window: { location: {
+      search: '?label=7&inventory_session_id=3&inventory_item_id=8',
+      replace(url) { destination = url; }
+    } }, console
+  });
+  assert.equal(destination, '/asset-label-print?ids=7&inventory_session_id=3&inventory_item_id=8');
+});
+
 test('persistent asset selection across searches, filters, labels and assignment', async () => {
   const browser = await puppeteer.launch({ headless: true, pipe: true });
   try {
@@ -63,6 +77,16 @@ test('persistent asset selection across searches, filters, labels and assignment
     await search('129'); await page.click('.asset-check');
     assert.deepEqual(await selected(), [7,12]);
     assert.equal(await page.$eval('#assetSelectionCount', e => e.textContent), '2 assets selected');
+    const compactUrl = await page.evaluate(() => {
+      const previousOpen = window.open;
+      let opened;
+      window.open = url => { opened = url; };
+      $('qrOnlyLabelBtn').click();
+      window.open = previousOpen;
+      return opened;
+    });
+    assert.equal(compactUrl, '/asset-label-print?ids=7,12');
+    assert.deepEqual(await selected(), [7,12]);
     await search('133'); assert.equal(await page.$eval('.asset-check', e => e.checked), true);
     await page.select('#statusFilter', 'Assigned');
     await page.waitForFunction(() => document.querySelectorAll('#assetTableBody .asset-check').length === 0);
@@ -84,26 +108,12 @@ test('persistent asset selection across searches, filters, labels and assignment
     await search('129'); await page.click('#selectAll');
     assert.deepEqual(await selected(), [7]);
     await page.click('#selectAll'); assert.deepEqual(await selected(), [7,12]);
-    await page.evaluate(async () => { await openLabelModal(); });
-    assert.deepEqual(await page.evaluate(() => currentLabelAssets.map(a => a.id)), [7,12]);
-    assert.equal(await page.$$eval('.asset-label', rows => rows.length), 2);
-    await page.evaluate(async () => {
-      window.printOutput = '';
-      window.open = () => ({ document: { open() {}, write(html) { window.printOutput = html; }, close() {} }, close() { window.printClosed = true; } });
-      await printLabels();
-    });
-    const printed = await page.evaluate(() => printOutput);
-    assert.match(printed, /PRIMA-2026-000133/);
-    assert.match(printed, /PRIMA-2026-000129/);
-    assert.deepEqual(await selected(), [7,12]);
-    await page.evaluate(async () => { printOutput = ''; failDetails = true; await printLabels(); failDetails = false; });
-    assert.equal(await page.evaluate(() => printOutput), '');
-    assert.equal(await page.evaluate(() => printClosed), true);
-    assert.deepEqual(await selected(), [7,12]);
-    // A blocked print popup must preserve both selections.
-    await page.evaluate(async () => { window.open = () => null; await printLabels(); });
-    assert.deepEqual(await selected(), [7,12]);
-    await page.evaluate(async () => { failDetails = true; await openLabelModal(); failDetails = false; });
+    assert.equal(await page.$('#bulkLabelBtn'), null);
+    assert.equal(await page.$('#assetLabelModal'), null);
+    assert.equal(await page.$('input[name="labelType"]'), null);
+    assert.equal(await page.$('#printLabelsBtn'), null);
+    assert.equal(await page.evaluate(() => typeof openLabelModal), 'undefined');
+    await page.evaluate(async () => { failDetails = true; await openAssignModal(selectedIds()); failDetails = false; });
     assert.deepEqual(await selected(), [7,12]);
     await page.evaluate(async () => { await openAssignModal(selectedIds()); });
     assert.deepEqual(await page.evaluate(() => currentAssignAssetIds), [7,12]);
@@ -117,12 +127,12 @@ test('persistent asset selection across searches, filters, labels and assignment
     await page.evaluate(async () => { records[1].status = 'Available'; await openAssignModal(selectedIds()); $('assignEmployee').value = '4'; await assignAssets({ preventDefault() {} }); });
     assert.deepEqual(await selected(), []);
     await search(''); await page.click('#selectAll'); assert.deepEqual(await selected(), [7,12,15]);
-    await page.evaluate(async () => { records = records.filter(a => a.id !== 12); await openLabelModal(); });
+    await page.evaluate(async () => { records = records.filter(a => a.id !== 12); await openAssignModal(selectedIds()); });
     assert.deepEqual(await selected(), [7,15]);
     assert.match(await page.evaluate(() => messages.at(-1)[0]), /no longer exists/);
     await page.click('#clearAssetSelectionBtn'); assert.deepEqual(await selected(), []);
     await search('133'); await page.click('.asset-check');
-    await page.evaluate(async () => { userId = 2; await openLabelModal(); });
+    await page.evaluate(async () => { userId = 2; await openAssignModal(selectedIds()); });
     assert.deepEqual(await selected(), []);
     await page.click('.asset-check');
     await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));

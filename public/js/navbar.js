@@ -9,6 +9,7 @@
     const routes = [
         { key: 'dashboard', href: '/dashboard', label: 'Dashboard', icon: 'grid-1x2', section: 'Workspace' },
         { key: 'assets', href: '/assets', label: 'Assets', icon: 'pc-display' },
+        { key: 'asset-label-print', href: '/asset-label-print', label: 'Asset Label Print', icon: 'qr-code' },
         { key: 'scanner', label: 'Scan QR / Barcode', icon: 'qr-code-scan' },
         { key: 'employees', href: '/employees', label: 'Employees', icon: 'people' },
         { key: 'maintenance', href: '/maintenance', label: 'Maintenance', icon: 'tools', section: 'Operations' },

@@ -362,6 +362,7 @@ app.get('/employees', requireLogin, (req, res) => {
 });
 
 app.get('/assets', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'public', 'assets.html')));
+app.get('/asset-label-print', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'public', 'asset-label-print.html')));
 
 app.get('/api/asset-categories', requireLogin, async (req, res) => {
   try {

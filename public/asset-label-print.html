@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Asset Label Print - PRIMA IT Asset Management</title>
+  <link rel="stylesheet" href="/vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/dark-theme.css">
+  <link rel="stylesheet" href="/css/dark-components.css">
+  <link rel="stylesheet" href="/css/navigation.css?v=4">
+  <link rel="stylesheet" href="/css/asset-label-print.css?v=4">
+  <script src="/js/theme.js"></script>
+  <script src="/js/alerts.js?v=2"></script>
+</head>
+<body>
+  <div id="sidebar" class="screen-only"></div>
+  <main class="main-content">
+    <div class="screen-only">
+      <h2 class="fw-bold">Asset Label Print</h2>
+      <p class="text-muted">Compact QR-only labels · 2 × 1 inch (50.8 × 25.4 mm) · 44 labels per A4 portrait sheet</p>
+      <div id="qrLabelMessage" role="status" aria-live="polite"></div>
+      <div class="card mb-3"><div class="card-body">
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+          <label for="qrAssetSearch" class="visually-hidden">Search assets</label>
+          <input id="qrAssetSearch" class="form-control qr-search" placeholder="Search Asset ID, name, serial or custodian…">
+          <span id="qrSelectedCount" class="small text-muted" role="status">0 assets selected</span>
+          <button id="qrClear" class="btn btn-outline-secondary" disabled>Clear Selection</button>
+          <button id="qrPreview" class="btn btn-outline-primary" disabled>Preview</button>
+          <button id="qrPrint" class="btn btn-primary" disabled>Print</button>
+        </div>
+        <div class="table-responsive qr-picker">
+          <table class="table table-hover align-middle mb-0">
+            <thead><tr><th><input id="qrSelectVisible" type="checkbox" class="form-check-input" aria-label="Select all visible assets"></th><th>Asset ID</th><th>Asset Name</th><th>Status</th></tr></thead>
+            <tbody id="qrAssetRows"></tbody>
+          </table>
+        </div>
+      </div></div>
+      <p class="small text-muted">Print at 100% / Actual size on A4 portrait, with 3 mm margins and browser headers/footers off. Four labels per row require a printer that supports these narrow margins; do not use Fit to page. Confirm alignment on plain paper before using sticker stock. Each QR contains the full Asset ID.</p>
+      <h5>A4 Preview</h5>
+    </div>
+    <div id="qrPrintSheets" aria-label="A4 label preview"></div>
+  </main>
+  <script src="/js/navbar.js?v=6"></script>
+  <script src="/vendor/qrcodejs/qrcode.min.js"></script>
+  <script src="/js/asset-label-print.js?v=5"></script>
+</body>
+</html>

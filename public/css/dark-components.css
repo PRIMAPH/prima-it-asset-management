@@ -35,17 +35,17 @@
   .audit-details, .repair-detail-value { color: var(--ui-text); }
   .audit-reference small, .page-note, .page-subtitle, .repair-detail-label,
   .custodian-option-details, .custodian-empty, .employee-option-details,
-  .employee-no-results, .employee-picker-arrow, .label-type-description,
+  .employee-no-results, .employee-picker-arrow,
   .scanner-instruction, .empty-state, .instruction { color: var(--ui-muted); }
   .repair-detail-label { font-size: .68rem; letter-spacing: .07em; margin-bottom: 5px; }
-  .custodian-list, .custodian-detail-card, .employee-picker-list, .label-type-option {
+  .custodian-list, .custodian-detail-card, .employee-picker-list {
     background: var(--ui-surface);
     color: var(--ui-text);
     border-color: var(--ui-border);
   }
   .custodian-option, .employee-option, .employee-header { border-color: var(--ui-border); }
   .custodian-option:hover, .employee-option:hover, .employee-option.active { background: #1b303a; }
-  .custodian-option.active, .label-type-option:hover { background: var(--ui-accent-soft); border-color: var(--ui-accent); }
+  .custodian-option.active { background: var(--ui-accent-soft); border-color: var(--ui-accent); }
   .asset-history-content { background: var(--ui-surface-raised); border-color: var(--ui-border); box-shadow: none; }
   .asset-history-line { background: var(--ui-border); }
   .asset-history-dot { background: var(--ui-accent-strong); color: #fff; }
@@ -61,14 +61,13 @@
   #repairModal .modal-body::-webkit-scrollbar-track { background: var(--ui-surface); }
   #assetHistoryModal .modal-body::-webkit-scrollbar-thumb,
   #repairModal .modal-body::-webkit-scrollbar-thumb { background: #3a5062; }
-  .label-preview-container { background: #080e14; border: 1px solid var(--ui-border); }
   .page-content { max-width: 1680px; margin: 0 auto; padding: 32px; }
   .main-content > .page-content { padding: 0; }
   .page-header { gap: 18px; margin-bottom: 28px; }
   .toolbar { background: #101b26; border-bottom: 1px solid var(--ui-border); box-shadow: 0 4px 20px rgba(0, 0, 0, .2); flex-wrap: wrap; }
 
   /* White previews show exactly what the printed document will look like. */
-  .print-document, .label-sheet, .custodian-print-preview {
+  .print-document, .custodian-print-preview {
     color-scheme: light;
     color: #1f2937;
     background: #fff;
