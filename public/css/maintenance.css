@@ -1,4 +1,18 @@
 .maintenance-stat-card{border:0;border-radius:14px;box-shadow:0 .2rem .9rem rgba(0,0,0,.06)}
+/* Same picker structure and dark-theme classes as Assign Employee. */
+#repairAssetPicker .employee-option {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+#repairAssetPicker .employee-option[aria-disabled="true"] {
+  cursor: not-allowed;
+  color: var(--ui-muted, #6c757d);
+}
+#repairAssetPicker .employee-option.active {
+  outline: 2px solid var(--ui-accent, #0d9488);
+  outline-offset: -2px;
+}
+#repairAssetResults { overscroll-behavior: contain; }
 .maintenance-stat-card .label{color:#6c757d;font-size:.82rem;margin-bottom:4px}.maintenance-stat-card .value{font-size:1.7rem;font-weight:700}
 .maintenance-table td,.maintenance-table th{white-space:nowrap;vertical-align:middle}.repair-status-badge{min-width:105px;display:inline-block;text-align:center}
 

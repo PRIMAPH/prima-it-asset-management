@@ -1529,174 +1529,12 @@ function fillAssetFields(
 }
 
 
-async function findActiveRepairForAsset(
-  assetId,
-  assetCode = ''
-) {
-
-  const searchValue =
-    String(
-      assetCode ||
-      ''
-    )
-      .trim();
-
-
-  if (!searchValue) {
-
-    return null;
-
-  }
-
-
-  try {
-
-    const response =
-      await fetch(
-
-        '/api/repairs?search=' +
-        encodeURIComponent(
-          searchValue
-        ),
-
-        {
-
-          credentials:
-            'include',
-
-          headers: {
-
-            'Accept':
-              'application/json'
-
-          }
-
-        }
-
-      );
-
-
-    const data =
-      await response
-        .json()
-        .catch(
-          () => []
-        );
-
-
-    if (
-      !response.ok
-    ) {
-
-      console.warn(
-
-        'Unable to check active repair:',
-
-        data.message ||
-
-        response.status
-
-      );
-
-
-      return null;
-
-    }
-
-
-    const records =
-      Array.isArray(
-        data
-      )
-
-        ? data
-
-        : [];
-
-
-    const normalizedCode =
-      searchValue
-        .toLowerCase();
-
-
-    return records
-      .find(
-        record => {
-
-          const recordAssetId =
-            Number(
-
-              record.db_asset_id ||
-
-              record.asset_id ||
-
-              0
-
-            );
-
-
-          const recordAssetCode =
-            String(
-              record.asset_code ||
-              ''
-            )
-              .trim()
-              .toLowerCase();
-
-
-          const sameAsset =
-
-            (
-              assetId &&
-
-              recordAssetId ===
-                Number(
-                  assetId
-                )
-            )
-
-            ||
-
-            (
-              normalizedCode &&
-
-              recordAssetCode ===
-                normalizedCode
-            );
-
-
-          return (
-
-            sameAsset &&
-
-            ACTIVE_REPAIR_STATUSES
-              .includes(
-                record.status
-              )
-
-          );
-
-        }
-
-      ) ||
-
-      null;
-
-
-  } catch (error) {
-
-    console.error(
-      'FIND ACTIVE REPAIR ERROR:',
-      error
-    );
-
-
-    return null;
-
-  }
-
+async function findActiveRepairForAsset(assetId, assetCode = '') {
+  const response = await fetch('/api/repairs?search=' + encodeURIComponent(assetCode), { credentials: 'include', headers: { Accept: 'application/json' } });
+  const data = await response.json();
+  if (!response.ok || !Array.isArray(data)) throw new Error(data.message || 'Unable to check active repairs. Please retry.');
+  return data.find(record => Number(record.db_asset_id || record.asset_id) === Number(assetId) && ACTIVE_REPAIR_STATUSES.includes(record.status)) || null;
 }
-
 
 function showExistingRepairWarning(
   activeRepair
@@ -1819,167 +1657,188 @@ function showExistingRepairWarning(
 }
 
 
-async function findAsset() {
-
-  const input =
-    $('repairAssetSearch');
-
-
-  if (!input) {
-
-    return;
-
-  }
-
-
-  const searchValue =
-    input.value
-      .trim();
-
-
-  if (!searchValue) {
-
-    formAlert(
-
-      'Please enter an Asset ID, barcode, serial number, or asset name.',
-
-      'warning'
-
-    );
-
-
-    return;
-
-  }
-
-
-  try {
-
-    formAlert(
-      'Searching for asset...',
-      'info'
-    );
-
-
-    const response =
-      await fetch(
-
-        '/api/assets/scan/' +
-        encodeURIComponent(
-          searchValue
-        ),
-
-        {
-
-          credentials:
-            'include',
-
-          headers: {
-
-            'Accept':
-              'application/json'
-
-          }
-
-        }
-
-      );
-
-
-    const data =
-      await response
-        .json()
-        .catch(
-          () => ({})
-        );
-
-
-    if (
-      !response.ok
-    ) {
-
-      throw new Error(
-
-        data.message ||
-
-        'Asset not found.'
-
-      );
-
-    }
-
-
-    const asset =
-      data.asset ||
-      data;
-
-
-    if (
-      !asset ||
-      !asset.id
-    ) {
-
-      throw new Error(
-        'Asset not found.'
-      );
-
-    }
-
-
-    fillAssetFields(
-      asset
-    );
-
-
-    const activeRepair =
-      await findActiveRepairForAsset(
-        asset.id,
-        asset.asset_id
-      );
-
-
-    if (
-      activeRepair
-    ) {
-
-      showExistingRepairWarning(
-        activeRepair
-      );
-
-
-      return;
-
-    }
-
-
-    formAlert(
-      'Asset is ready to start a repair record.',
-      'success'
-    );
-
-
-  } catch (error) {
-
-    console.error(
-      'FIND ASSET ERROR:',
-      error
-    );
-
-
-    formAlert(
-
-      error.message ||
-
-      'Unable to search for asset.',
-
-      'danger'
-
-    );
-
-  }
-
+let assetSearchVersion = 0;
+let assetSearchTimer;
+let assetSearchController;
+let assetPickerRows = [];
+let assetPickerActiveIndex = -1;
+
+function updateRepairSubmit() {
+  const button = $('saveRepairBtn');
+  if (button) button.disabled = saveInProgress || !$('repairAssetId')?.value || !$('repairProblem')?.value.trim();
+}
+function clearRepairAsset() {
+  closeRepairAssetPicker();
+  setValue('repairAssetId', '');
+  setHtml('repairAssetResults', '');
+  setHtml('repairAssetInfo', 'Select an asset before starting the repair.');
+  updateRepairSubmit();
+}
+function closeRepairAssetPicker() {
+  assetSearchVersion++;
+  clearTimeout(assetSearchTimer);
+  assetSearchController?.abort();
+  $('repairAssetResults')?.classList.remove('show');
+  $('repairAssetSearch')?.setAttribute('aria-expanded', 'false');
+  $('repairAssetSearch')?.removeAttribute('aria-activedescendant');
+  $('repairAssetResults')?.querySelectorAll('.active').forEach(el => el.classList.remove('active'));
+  assetPickerActiveIndex = -1;
 }
 
+async function searchRepairAssets(search, signal) {
+  let response;
+  try {
+    response = await fetch('/api/maintenance/assets?search=' + encodeURIComponent(search), {
+      credentials: 'include', headers: { Accept: 'application/json' }, signal
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') throw error;
+    throw new Error('Unable to reach the asset search service. Check your connection and try again.');
+  }
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const messages = {
+      401: 'Session expired. Please sign in again.',
+      403: 'You do not have permission to search assets.',
+      404: 'Asset search service is unavailable.',
+      500: 'Unable to retrieve assets due to a server error.'
+    };
+    throw new Error(messages[response.status] || data?.message || `Unable to load assets (HTTP ${response.status}). Please try again.`);
+  }
+  if (!Array.isArray(data)) throw new Error('Asset search returned an invalid response. Please try again.');
+  return data;
+}
+
+async function selectRepairAsset(asset) {
+  closeRepairAssetPicker();
+  const version = assetSearchVersion;
+  setValue('repairAssetId', '');
+  setText('repairAssetInfo', 'Checking asset availability...');
+  formAlert('Checking asset availability...', 'info');
+  updateRepairSubmit();
+  try {
+    // Refresh eligibility before accepting a choice; POST rechecks under a lock.
+    const matches = await searchRepairAssets(asset.asset_id);
+    if (version !== assetSearchVersion) return;
+    const current = matches.find(row => Number(row.id) === Number(asset.id));
+    if (!current) throw new Error('This asset no longer exists or is unavailable. Please select another asset.');
+    if (current.repair_ineligible_reason) throw new Error(current.repair_ineligible_reason);
+    fillAssetFields(current);
+    setValue('repairAssetSearch', current.asset_id + ' \u2014 ' + current.asset_name);
+    formAlert('Asset is ready to start a repair record.', 'success');
+  } catch (error) {
+    if (version !== assetSearchVersion) return;
+    setText('repairAssetInfo', 'Select an available asset before starting the repair.');
+    formAlert(error.message, 'danger');
+  }
+  updateRepairSubmit();
+}
+function showAssetPickerMessage(message) {
+  const list = $('repairAssetResults');
+  list.innerHTML = '<div class="employee-no-results">' + esc(message) + '</div>';
+  setText('repairAssetPickerStatus', message);
+}
+
+async function loadRepairAssetOptions(search = '') {
+  if ($('repairId')?.value) return;
+  clearTimeout(assetSearchTimer);
+  assetSearchController?.abort();
+  assetSearchController = new AbortController();
+  const version = ++assetSearchVersion;
+  const list = $('repairAssetResults');
+  list.classList.add('show');
+  $('repairAssetSearch').setAttribute('aria-expanded', 'true');
+  $('repairAssetSearch').removeAttribute('aria-activedescendant');
+  assetPickerActiveIndex = -1;
+  assetPickerRows = [];
+  showAssetPickerMessage('Loading assets...');
+  try {
+    const data = await searchRepairAssets(search, assetSearchController.signal);
+    if (version !== assetSearchVersion) return;
+    if (!data.length) return showAssetPickerMessage('No matching assets found.');
+    assetPickerRows = data;
+    list.innerHTML = data.map((asset, index) => `
+      <div id="repairAssetOption${index}" class="employee-option" role="option"
+        data-index="${index}" aria-selected="${Number($('repairAssetId').value) === Number(asset.id)}"
+        aria-disabled="${Boolean(asset.repair_ineligible_reason)}">
+        <div class="employee-option-name">${esc(asset.asset_id)} \u2014 ${esc(asset.asset_name)}</div>
+        <div class="employee-option-details">${esc([
+          asset.category_name || 'No category',
+          asset.serial_number ? 'Serial: ' + asset.serial_number : '', asset.status
+        ].filter(Boolean).join(' \u00b7 '))}</div>
+        ${asset.custodian_name ? '<div class="employee-option-details">Custodian: ' + esc(asset.custodian_name) + '</div>' : ''}
+        ${asset.repair_ineligible_reason ? '<div class="employee-option-details">Unavailable: ' + esc(asset.repair_ineligible_reason) + '</div>' : ''}
+      </div>`).join('');
+    setText('repairAssetPickerStatus', `${data.length} matching assets. Use arrow keys to choose an available asset.`);
+  } catch (error) {
+    if (version === assetSearchVersion && error.name !== 'AbortError') showAssetPickerMessage(error.message);
+  }
+}
+
+function setupRepairAssetPicker() {
+  const picker = $('repairAssetPicker');
+  if (!picker || picker.dataset.initialized) return;
+  picker.dataset.initialized = 'true';
+  const input = $('repairAssetSearch');
+  const list = $('repairAssetResults');
+  const open = () => {
+    if (!$('repairId').value && !list.classList.contains('show')) {
+      loadRepairAssetOptions($('repairAssetId').value ? '' : input.value.trim());
+    }
+  };
+  input.addEventListener('focus', open);
+  input.addEventListener('click', open);
+  input.addEventListener('input', () => {
+    clearRepairAsset();
+    formAlert('');
+    list.classList.add('show');
+    input.setAttribute('aria-expanded', 'true');
+    showAssetPickerMessage('Loading assets...');
+    assetSearchTimer = setTimeout(() => loadRepairAssetOptions(input.value.trim()), 180);
+  });
+  list.addEventListener('mousedown', event => event.preventDefault());
+  list.addEventListener('click', event => {
+    const option = event.target.closest('.employee-option');
+    if (!option || option.getAttribute('aria-disabled') === 'true') return;
+    selectRepairAsset(assetPickerRows[Number(option.dataset.index)]);
+  });
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && list.classList.contains('show')) {
+      event.preventDefault(); event.stopPropagation(); closeRepairAssetPicker();
+    } else if (event.key === 'Tab') {
+      closeRepairAssetPicker();
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (!list.classList.contains('show')) return open();
+      const options = [...list.querySelectorAll('.employee-option[aria-disabled="false"]')];
+      if (!options.length) return;
+      assetPickerActiveIndex = assetPickerActiveIndex < 0
+        ? (event.key === 'ArrowDown' ? 0 : options.length - 1)
+        : (assetPickerActiveIndex + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+      list.querySelectorAll('.active').forEach(el => el.classList.remove('active'));
+      const option = options[assetPickerActiveIndex];
+      option.classList.add('active');
+      input.setAttribute('aria-activedescendant', option.id);
+      option.scrollIntoView({ block: 'nearest' });
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      if (list.classList.contains('show')) list.querySelector('.employee-option.active')?.click();
+    }
+  });
+  document.addEventListener('click', event => {
+    if (!picker.contains(event.target) && list.classList.contains('show')) closeRepairAssetPicker();
+  });
+  picker.addEventListener('focusout', event => {
+    if (!picker.contains(event.relatedTarget) && list.classList.contains('show')) closeRepairAssetPicker();
+  });
+  $('repairModal').addEventListener('hide.bs.modal', closeRepairAssetPicker);
+  $('repairForm').addEventListener('input', updateRepairSubmit);
+  $('repairModal').addEventListener('shown.bs.modal', () => {
+    input.readOnly = Boolean($('repairId').value);
+    updateRepairSubmit();
+    if (!input.readOnly && !$('repairAssetId').value) input.focus();
+  });
+}
 
 // ============================================================
 // OPEN NEW REPAIR
@@ -1992,6 +1851,8 @@ async function openNew(
 
   try {
 
+    clearRepairAsset();
+    $('repairAssetSearch').readOnly = false;
     selectedRepair =
       null;
 
@@ -2122,17 +1983,6 @@ async function openNew(
         ?.show();
 
 
-      setTimeout(
-        () => {
-
-          $('repairAssetSearch')
-            ?.focus();
-
-        },
-        200
-      );
-
-
       return;
 
     }
@@ -2226,10 +2076,7 @@ async function openNew(
     }
 
 
-    fillAssetFields(
-      asset
-    );
-
+    await selectRepairAsset(asset);
 
     repairModal
       ?.show();
@@ -2328,37 +2175,6 @@ async function save(
 
 
     return;
-
-  }
-
-
-  if (!repairId) {
-
-    const activeRepair =
-      await findActiveRepairForAsset(
-
-        assetId,
-
-        $('repairAssetSearch')
-          ?.value
-          .trim() ||
-        ''
-
-      );
-
-
-    if (
-      activeRepair
-    ) {
-
-      showExistingRepairWarning(
-        activeRepair
-      );
-
-
-      return;
-
-    }
 
   }
 
@@ -2636,8 +2452,7 @@ async function save(
 
     if (button) {
 
-      button.disabled =
-        false;
+      updateRepairSubmit();
 
 
       button.textContent =
@@ -2746,6 +2561,8 @@ async function edit(
     }
 
 
+    closeRepairAssetPicker();
+    $('repairAssetSearch').readOnly = true;
     selectedRepair =
       repair;
 
@@ -6061,13 +5878,6 @@ async function init() {
     );
 
 
-  $('loadAssetBtn')
-    ?.addEventListener(
-      'click',
-      findAsset
-    );
-
-
   $('refreshRepairsBtn')
     ?.addEventListener(
       'click',
@@ -6107,26 +5917,6 @@ async function init() {
     ?.addEventListener(
       'submit',
       save
-    );
-
-
-  $('repairAssetSearch')
-    ?.addEventListener(
-      'keydown',
-      event => {
-
-        if (
-          event.key ===
-          'Enter'
-        ) {
-
-          event.preventDefault();
-
-          findAsset();
-
-        }
-
-      }
     );
 
 
@@ -6788,3 +6578,9 @@ document.addEventListener(
   'DOMContentLoaded',
   init
 );
+
+// Keep validity synchronized with user edits and modal reuse.
+document.addEventListener('DOMContentLoaded', () => {
+  setupRepairAssetPicker();
+  updateRepairSubmit();
+});

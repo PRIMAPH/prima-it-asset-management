@@ -7304,6 +7304,46 @@ const REPAIR_PRIORITIES = [
 
 app.get('/maintenance',requireLogin,(req,res)=>res.sendFile(path.join(__dirname,'public','maintenance.html')));
 
+// Read-only picker results. The repair POST rechecks these rules under an asset row lock.
+app.get('/api/maintenance/assets', requireMaintenanceStaff, async (req, res) => {
+  try {
+    const search = String(req.query.search || '').trim();
+    const params = [];
+    let sql = `
+      SELECT a.id, a.asset_id, a.asset_name, a.serial_number, a.barcode,
+             a.brand, a.model, a.condition_status, a.status,
+             c.name AS category_name, e.full_name AS custodian_name,
+             CASE
+               WHEN a.status IN ('Disposed', 'Retired', 'For Disposal')
+                 THEN CONCAT('Asset is ', a.status, ' and cannot be sent for repair.')
+               WHEN EXISTS (
+                 SELECT 1 FROM asset_repairs ar
+                 WHERE ar.asset_id = a.id
+                   AND ar.status IN ('For Repair', 'Under Diagnosis', 'Under Repair', 'Waiting for Parts', 'Repaired')
+               ) THEN 'Asset already has an active repair record.'
+               ELSE NULL
+             END AS repair_ineligible_reason
+      FROM assets a
+      LEFT JOIN asset_categories c ON c.id = a.category_id
+      LEFT JOIN asset_assignments aa ON aa.asset_id = a.id AND aa.returned_at IS NULL
+      LEFT JOIN employees e ON e.id = aa.employee_id
+      WHERE 1 = 1
+    `;
+    if (search) {
+      sql += ' AND (a.asset_id LIKE ? OR a.asset_name LIKE ? OR a.serial_number LIKE ? OR a.barcode LIKE ?)';
+      const term = `%${search}%`;
+      params.push(term, term, term, term);
+    }
+    sql += ' ORDER BY a.id DESC';
+    const [rows] = await pool.query(sql, params);
+    res.set('Cache-Control', 'no-store');
+    res.json(rows);
+  } catch (error) {
+    console.error('MAINTENANCE ASSET SEARCH ERROR:', error);
+    res.status(500).json({ message: 'Unable to load assets for repair. Please try again.' });
+  }
+});
+
 app.get('/api/maintenance/summary', requireLogin, async (req, res) => {
     try {
 

@@ -80,7 +80,7 @@
 
   rel="stylesheet"
 
-  href="/css/maintenance.css?v=3"
+  href="/css/maintenance.css?v=4"
 
 >
 
@@ -88,6 +88,7 @@
 
   <meta name="theme-color" content="#0b1118">
 
+<link rel="stylesheet" href="/css/search-picker.css?v=1">
 <link
 
   data-dark-theme
@@ -812,46 +813,16 @@
 
 
 
-              <div class="input-group">
-
-
-
-                <input
-
-                  id="repairAssetSearch"
-
-                  class="form-control"
-
-                  placeholder="Type Asset ID / name..."
-
-                  autocomplete="off"
-
-                >
-
-
-
-                <button
-
-                  id="loadAssetBtn"
-
-                  type="button"
-
-                  class="btn btn-outline-primary"
-
-                >
-
-                  Find
-
-                </button>
-
-
-
+              <div class="employee-picker" id="repairAssetPicker">
+                <input id="repairAssetSearch" type="text" class="form-control employee-picker-input"
+                  placeholder="Search Asset ID, name, or serial number..." autocomplete="off"
+                  role="combobox" aria-autocomplete="list" aria-expanded="false"
+                  aria-controls="repairAssetResults" aria-describedby="repairAssetHelp" required>
+                <span class="employee-picker-arrow" aria-hidden="true">&#9662;</span>
+                <div id="repairAssetResults" class="employee-picker-list" role="listbox" aria-label="Matching assets"></div>
               </div>
-
-
-
-
-
+              <div id="repairAssetHelp" class="form-text">Click to browse assets, or type to search.</div>
+              <div id="repairAssetPickerStatus" class="visually-hidden" role="status" aria-live="polite"></div>
               <input
 
                 type="hidden"
@@ -2737,7 +2708,7 @@
 
 
 
-<script src="/js/maintenance.js?v=28"></script>
+<script src="/js/maintenance.js?v=31"></script>
 
 
 <!-- =========================================================
