@@ -48,6 +48,12 @@
                     <i class="bi bi-x-lg" aria-hidden="true"></i>
                 </button>
             </div>
+            <div class="prima-system-info">
+                <div class="prima-system-name">Asset Inventory System</div>
+                <button type="button" id="primaReleaseNotes" class="prima-release-link" disabled>
+                    <span id="primaVersion">Version unavailable</span><span aria-hidden="true"> · </span>Release Notes
+                </button>
+            </div>
             <nav class="nav flex-column prima-navigation" aria-label="Workspace">
                 ${routes.map(route => `
                     ${route.section ? `<div class="prima-nav-section">${route.section}</div>` : ''}
@@ -186,12 +192,58 @@
     mobile.addEventListener('change', () => setMenuOpen(false, false));
     setMenuOpen(false, false);
 
-    document.getElementById('primaNavScan').addEventListener('click', () => {
+    document.getElementById('primaReleaseNotes').addEventListener('click', () => {
         if (isOpen) setMenuOpen(false);
-        if (typeof window.openScannerPage === 'function') {
-            window.openScannerPage();
-        } else {
-            console.warn('PRIMA Scanner: openScannerPage() is not available.');
+    });
+    const releaseScript = document.createElement('script');
+    releaseScript.src = '/js/release-notes.js';
+    document.body.appendChild(releaseScript);
+
+    // Reuse the existing scanner modal on every module, loading dependencies once.
+    const scannerScripts = new Map();
+    function loadScannerScript(src, ready) {
+        if (ready()) return Promise.resolve();
+        if (scannerScripts.has(src)) return scannerScripts.get(src);
+        const promise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = () => ready() ? resolve() : reject(new Error(`Scanner dependency did not initialize: ${src}`));
+            script.onerror = () => {
+                script.remove();
+                reject(new Error(`Unable to load ${src}. Check your connection and try again.`));
+            };
+            document.body.appendChild(script);
+        }).catch(error => {
+            scannerScripts.delete(src);
+            throw error;
+        });
+        scannerScripts.set(src, promise);
+        return promise;
+    }
+
+    const scanButton = document.getElementById('primaNavScan');
+    scanButton.addEventListener('click', async () => {
+        if (scanButton.disabled) return;
+        if (isOpen) setMenuOpen(false);
+        const message = document.getElementById('primaNavMessage');
+        message.hidden = true;
+        scanButton.disabled = true;
+        scanButton.setAttribute('aria-busy', 'true');
+        try {
+            await loadScannerScript('/vendor/bootstrap/bootstrap.bundle.min.js', () => Boolean(window.bootstrap?.Modal));
+            await loadScannerScript('/vendor/html5-qrcode/html5-qrcode.min.js', () => typeof window.Html5Qrcode === 'function');
+            await loadScannerScript('/js/asset-return.js?v=1', () => Boolean(window.PRIMAAssetReturn));
+            await loadScannerScript('/js/asset-scanner.js?v=8', () => typeof window.openScannerPage === 'function');
+            await window.openScannerPage();
+        } catch (error) {
+            console.error('PRIMA Scanner navigation failed:', error);
+            message.textContent = `Unable to open Scan QR / Barcode. ${error.message || 'Please try again.'}`;
+            message.setAttribute('role', 'alert');
+            message.hidden = false;
+            if (mobile.matches) setMenuOpen(true);
+        } finally {
+            scanButton.disabled = false;
+            scanButton.removeAttribute('aria-busy');
         }
     });
 

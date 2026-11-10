@@ -1,5 +1,7 @@
 # PRIMA IT Asset Management
 
+Versioning and release notes: see [release management](docs/releases.md).
+
 Starter architecture for a company IT Asset Management System.
 
 ## Stack

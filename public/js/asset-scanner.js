@@ -1,10 +1,47 @@
 (function () {
     "use strict";
 
+    if (window.PRIMAAssetScannerInitialized) return;
+    window.PRIMAAssetScannerInitialized = true;
+
     let scanAssetModal = null;
     let assetScanner = null;
     let scannerRunning = false;
     let scanProcessing = false;
+    let cameraQueue = Promise.resolve();
+    let cameraGeneration = 0;
+    let startTimer;
+
+    function scannerVisible() {
+        return document.getElementById('scanAssetModal')?.classList.contains('show');
+    }
+
+    function startAssetScanner() {
+        const generation = cameraGeneration;
+        cameraQueue = cameraQueue.then(() => {
+            if (generation === cameraGeneration && scannerVisible()) return startScannerCamera(generation);
+        });
+        return cameraQueue;
+    }
+
+    function stopAssetScanner() {
+        clearTimeout(startTimer);
+        cameraGeneration++;
+        cameraQueue = cameraQueue.then(stopScannerCamera);
+        return cameraQueue;
+    }
+
+    function releaseCameraTracks() {
+        document.querySelectorAll('#assetScanner video').forEach(video => {
+            video.srcObject?.getTracks().forEach(track => track.stop());
+        });
+    }
+
+    window.addEventListener('pagehide', () => {
+        stopAssetScanner();
+        // Release live tracks immediately; asynchronous cleanup may be suspended on unload.
+        releaseCameraTracks();
+    });
 
     // ============================================================
     // HELPERS
@@ -411,13 +448,15 @@ function getRepairIdFromScannedUrl(value) {
     window.openScannerPage = function () {
 
         if (!window.bootstrap) {
-            console.error(
-                "PRIMA Scanner: Bootstrap is not loaded."
-            );
-            return;
+            throw new Error('Scanner dialog library is unavailable. Reload the page and try again.');
+        }
+
+        if (document.querySelector('.modal.show:not(#scanAssetModal), dialog[open]')) {
+            throw new Error('Close the current dialog before opening the scanner.');
         }
 
         const modal = ensureScannerModal();
+        setupAssetScanner();
 
         scanAssetModal =
             bootstrap.Modal.getOrCreateInstance(modal);
@@ -462,12 +501,15 @@ function getRepairIdFromScannedUrl(value) {
             document.getElementById("scanAssetModal");
 
         if (!modal) return;
+        if (modal.dataset.scannerSetup === '1') return;
+        modal.dataset.scannerSetup = '1';
 
         modal.addEventListener(
             "shown.bs.modal",
             function () {
 
-                setTimeout(() => {
+                clearTimeout(startTimer);
+                startTimer = setTimeout(() => {
                     startAssetScanner();
                 }, 300);
 
@@ -475,7 +517,7 @@ function getRepairIdFromScannedUrl(value) {
         );
 
         modal.addEventListener(
-            "hidden.bs.modal",
+            "hide.bs.modal",
             function () {
 
                 stopAssetScanner();
@@ -517,14 +559,9 @@ function getRepairIdFromScannedUrl(value) {
 
         retryButton?.addEventListener(
             "click",
-            function () {
-
-                stopAssetScanner();
-
-                setTimeout(() => {
-                    startAssetScanner();
-                }, 300);
-
+            async function () {
+                await stopAssetScanner();
+                if (scannerVisible()) startAssetScanner();
             }
         );
     }
@@ -562,7 +599,7 @@ function getRepairIdFromScannedUrl(value) {
         }
     }
 
-  async function startAssetScanner() {
+  async function startScannerCamera(generation) {
 
     if (scannerRunning) {
         return;
@@ -664,6 +701,7 @@ function getRepairIdFromScannedUrl(value) {
          * ========================================================
          */
 
+        if (generation !== cameraGeneration || !scannerVisible()) return;
         let cameras = [];
 
         try {
@@ -692,6 +730,7 @@ function getRepairIdFromScannedUrl(value) {
          * ========================================================
          */
 
+        if (generation !== cameraGeneration || !scannerVisible()) return;
         const scannerFormats =
             window.Html5QrcodeSupportedFormats
                 ? [
@@ -857,7 +896,7 @@ function getRepairIdFromScannedUrl(value) {
 
             decodedText => {
 
-                if (scanProcessing) {
+                if (scanProcessing || generation !== cameraGeneration || !scannerVisible()) {
                     return;
                 }
 
@@ -881,6 +920,10 @@ function getRepairIdFromScannedUrl(value) {
         );
 
         scannerRunning = true;
+        if (generation !== cameraGeneration || !scannerVisible()) {
+            await stopScannerCamera();
+            return;
+        }
 
         loading?.classList.add(
             "d-none"
@@ -910,6 +953,7 @@ function getRepairIdFromScannedUrl(value) {
 
         if (assetScanner) {
 
+            releaseCameraTracks();
             try {
                 await assetScanner.clear();
             } catch {}
@@ -931,7 +975,7 @@ function getRepairIdFromScannedUrl(value) {
     // STOP CAMERA
     // ============================================================
 
-    async function stopAssetScanner() {
+    async function stopScannerCamera() {
 
         scanProcessing = false;
 
@@ -955,6 +999,7 @@ function getRepairIdFromScannedUrl(value) {
 
         }
 
+        releaseCameraTracks();
         try {
             await assetScanner.clear();
         } catch {}

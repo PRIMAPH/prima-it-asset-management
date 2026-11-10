@@ -1,4 +1,27 @@
 /* Shared application shell. Print documents retain their own paper layouts. */
+.prima-system-info { padding: 0 9px 20px; flex-shrink: 0; margin-top: -15px; }
+.prima-system-name { color: #fff; font-size: 13px; font-weight: 600; line-height: 1.6; }
+.prima-release-link { padding: 0; border: 0; background: none; color: #aebdcc; font: inherit; font-size: 12px; cursor: pointer; }
+#primaVersion { color: #63e5d3; }
+.prima-release-link:hover { color: #fff; }
+.prima-release-link:disabled { cursor: default; opacity: .7; }
+.prima-release-dialog { width: min(620px, calc(100% - 32px)); max-height: 85dvh; padding: 0; border: 1px solid #304455; border-radius: 16px; background: #111e2a; color: #e7edf4; box-shadow: 0 24px 80px #0008; }
+.prima-release-dialog::backdrop { background: #040b14b3; }
+.prima-release-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 24px; border-bottom: 1px solid #304455; }
+.prima-release-dialog header p { color: #63e5d3; margin: 0 0 5px; font-size: 12px; }
+.prima-release-dialog h2 { font-size: 20px; margin: 0; color: #fff; }
+.prima-release-dialog h3 { font-size: 18px; color: #63e5d3; }
+.prima-release-dialog h4 { font-size: 14px; margin-top: 20px; color: #fff; }
+.prima-release-body { padding: 24px; font-size: 14px; line-height: 1.6; }
+.prima-release-body li { margin-bottom: 6px; }
+.prima-release-body details { border-top: 1px solid #304455; padding-top: 18px; margin-top: 24px; }
+.prima-release-body summary { cursor: pointer; margin-bottom: 16px; }
+.prima-release-dialog button, .prima-release-notice button { background: transparent; color: #63e5d3; border: 1px solid #304455; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.prima-release-dialog button:focus-visible, .prima-release-notice button:focus-visible { outline: 2px solid #63e5d3; outline-offset: 3px; }
+.prima-release-notice { position: fixed; right: 20px; bottom: 20px; z-index: 1030; width: min(340px, calc(100% - 40px)); background: #142633; border: 1px solid #385361; border-radius: 12px; padding: 16px; color: #fff; box-shadow: 0 8px 24px #0004; font-size: 14px; }
+.prima-release-notice[hidden] { display: none; }
+.prima-release-notice div { display: flex; gap: 10px; margin-top: 10px; }
+@media print { .prima-release-dialog, .prima-release-notice { display: none; } }
 @media screen {
   :root { --sidebar-width: 248px; }
 

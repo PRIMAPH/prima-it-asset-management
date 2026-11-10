@@ -35,6 +35,7 @@ const backupUpload = multer({
 });
 
 const app = express();
+app.get('/api/version', require('./services/app-version').versionHandler);
 const PORT = Number(process.env.PORT || 3001);
 
 const pool = mysql.createPool({
