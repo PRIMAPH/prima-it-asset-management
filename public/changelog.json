@@ -1,0 +1,23 @@
+{
+  "releases": [
+    {
+      "version": "1.0.0",
+      "date": "2026-11-09",
+      "features": [
+        "Asset inventory with asset creation, editing, employee assignment, and returns.",
+        "Employee records with editing and administrator-controlled deletion.",
+        "Maintenance tracking, inventory, reports, and administrator audit logs.",
+        "Centralized application version, release notes, and browser update notifications."
+      ],
+      "improvements": [
+        "Assign assets directly to an employee when creating an asset.",
+        "Asset list filtering and row selection improvements.",
+        "New employees default to the Others department."
+      ],
+      "fixes": [
+        "Corrected the asset dropdown in Maintenance Start Repair.",
+        "Fixed editing assets with uploaded images."
+      ]
+    }
+  ]
+}

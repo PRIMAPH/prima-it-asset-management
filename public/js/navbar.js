@@ -195,9 +195,21 @@
     document.getElementById('primaReleaseNotes').addEventListener('click', () => {
         if (isOpen) setMenuOpen(false);
     });
-    const releaseScript = document.createElement('script');
-    releaseScript.src = '/js/release-notes.js';
-    document.body.appendChild(releaseScript);
+    function loadReleaseNotes() {
+        const trigger = document.getElementById('primaReleaseNotes');
+        trigger.disabled = true;
+        const releaseScript = document.createElement('script');
+        releaseScript.src = '/js/release-notes.js?v=2';
+        releaseScript.onerror = () => {
+            releaseScript.remove();
+            trigger.disabled = false;
+            trigger.title = 'Release notes could not load. Click to retry.';
+            document.getElementById('primaVersion').textContent = 'Unavailable — retry';
+            trigger.addEventListener('click', loadReleaseNotes, { once: true });
+        };
+        document.body.appendChild(releaseScript);
+    }
+    loadReleaseNotes();
 
     // Reuse the existing scanner modal on every module, loading dependencies once.
     const scannerScripts = new Map();
