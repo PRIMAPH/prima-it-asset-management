@@ -31,6 +31,27 @@ If PowerShell blocks `npm.ps1`, use `npm.cmd` in place of `npm` without changing
 
 No deployment or service restart is performed by the version feature or its tests.
 
+## Diagnosing `/api/version` returning 404
+
+`release-notes.js` requests the same-origin `/api/version`. `navbar.js` loads that client; `alerts.js` intercepts 401 session failures and does not rewrite the version URL. A healthy database or a successfully served JavaScript file does not prove that the running Node process has the current backend routes.
+
+The route is registered in `server.js` immediately after creating the Express application, before authentication and static middleware. It uses `versionHandler` from `services/app-version.js`, which reads `package.json` and `public/changelog.json`. The response is `{ systemName, version, releases }`; no credentials or configuration are returned. Do not add another version literal or a second endpoint.
+
+If this source passes locally but production returns 404, verify the deployed `server.js` and the running service's source path. From an administrator terminal on the server, these are read-only checks:
+
+```powershell
+git -C C:\prima-it-asset-management-source log -1 --oneline
+Select-String -Path C:\prima-it-asset-management\server.js -Pattern '/api/version', 'versionHandler'
+Test-Path C:\prima-it-asset-management\services\app-version.js
+nssm get PrimaAssetManagement Application
+nssm get PrimaAssetManagement AppDirectory
+nssm get PrimaAssetManagement AppParameters
+```
+
+The intended live directory is `C:\prima-it-asset-management`; verify the service actually runs its `server.js`. Include `server.js`, `services/app-version.js`, `package.json`, `package-lock.json`, `public/changelog.json`, and the matching frontend files in the reviewed deployment. Static files can change immediately while route registrations remain in memory until Node restarts. After an approved deployment, restart the service using your normal procedure, then verify `GET https://10.10.0.5:3001/api/version` returns HTTP 200 JSON and the sidebar displays `v1.0`. Do not change session middleware, database records, or TLS settings to resolve a missing route.
+
+Local validation: `node --test tests/version-route.test.cjs tests/app-version.test.cjs`. The route test executes the full `server.js` registration with real Express and a loopback HTTP listener, replacing database, certificate, scheduler, and socket infrastructure with test doubles. It makes no live database connections and also verifies that the existing asset endpoint still requires authentication.
+
 ## Browser notifications
 
 A browser's first visit establishes `prima.lastAcknowledgedVersion` in localStorage without displaying an update notice. A newer version shows a subtle notice once, tracked by `prima.lastNotifiedVersion`; refreshes do not repeat it even if the user did not click. Opening notes or dismissing updates the acknowledged version. Existing modal/dialog and mobile navigation workflows defer the notice; notes never open automatically. Other tabs observe storage changes. Rollbacks do not generate new-version notices. Clearing browser storage resets this baseline. If storage is blocked, version and notes remain available, but persistent update tracking is unavailable.

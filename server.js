@@ -17,6 +17,7 @@ const XLSX = require('xlsx');
 const nodemailer = require('nodemailer');
 const { returnAssignment } = require('./services/asset-return');
 const { archiveEmployee } = require('./services/employee-deletion');
+const { versionHandler } = require('./services/app-version');
 
 
 const upload = multer({
@@ -35,7 +36,9 @@ const backupUpload = multer({
 });
 
 const app = express();
-app.get('/api/version', require('./services/app-version').versionHandler);
+// Public deployed-code metadata: register before session/database checks and static files.
+// Copying frontend files alone does not update routes in an already-running Node process.
+app.get('/api/version', versionHandler);
 const PORT = Number(process.env.PORT || 3001);
 
 const pool = mysql.createPool({
