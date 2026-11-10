@@ -75,8 +75,9 @@ test('missing script and unavailable metadata offer retry without breaking navig
     metadata = 'valid';
     await page.click('.prima-release-body button');
     await page.waitForFunction(() => document.getElementById('primaVersion').textContent === 'v1.0');
-    assert.match(await page.$eval('.prima-release-body', el => el.textContent), /v1\.0\.0/);
+    assert.match(await page.$eval('.prima-release-dialog', el => el.textContent), /v1\.0\.0/);
     await page.keyboard.press('Escape');
+    await page.waitForSelector('dialog[open]', { hidden: true });
     metadata = 'unavailable';
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     await page.waitForFunction(() => document.getElementById('primaReleaseNotes').title.includes('last loaded version'));
@@ -112,7 +113,7 @@ test('sidebar, modal, deployed updates, persistent notifications, and mobile nav
     assert.ok(layout.name >= layout.logo);
     await page.click('#primaReleaseNotes');
     await page.waitForSelector('dialog[open]');
-    assert.match(await page.$eval('.prima-release-body', el => el.textContent), /v1\.0\.0.*2026-11-09/s);
+    assert.match(await page.$eval('.prima-release-dialog', el => el.textContent), /v1\.0\.0.*2026-11-09/s);
     assert.equal(await page.$('details'), null);
     await page.keyboard.press('Escape');
     await page.waitForSelector('dialog[open]', { hidden: true });
@@ -129,6 +130,7 @@ test('sidebar, modal, deployed updates, persistent notifications, and mobile nav
     assert.match(await page.$eval('.prima-release-body', el => el.textContent), /Test fixture fix/);
     assert.ok(await page.$('details'));
     await page.keyboard.press('Escape');
+    await page.waitForSelector('dialog[open]', { hidden: true });
     await page.reload();
     await page.waitForFunction(() => document.getElementById('primaVersion').textContent === 'v1.0.1');
     assert.equal(await page.$eval('.prima-release-notice', el => el.hidden), true);
@@ -158,6 +160,7 @@ test('sidebar, modal, deployed updates, persistent notifications, and mobile nav
     assert.equal(await page.$eval('dialog', el => el.getBoundingClientRect().width <= innerWidth), true);
     assert.match(await page.$eval('.prima-release-body', el => el.textContent), /not available yet/);
     await page.keyboard.press('Escape');
+    await page.waitForSelector('dialog[open]', { hidden: true });
     await page.click('#primaNavToggle');
     await Promise.all([page.waitForNavigation(), page.click('.prima-navigation a[href="/employees"]')]);
     assert.equal(new URL(page.url()).pathname, '/employees');

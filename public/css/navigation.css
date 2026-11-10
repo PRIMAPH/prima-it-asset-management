@@ -5,17 +5,45 @@
 #primaVersion { color: #63e5d3; }
 .prima-release-link:hover { color: #fff; }
 .prima-release-link:disabled { cursor: default; opacity: .7; }
-.prima-release-dialog { width: min(620px, calc(100% - 32px)); max-height: 85dvh; padding: 0; border: 1px solid #304455; border-radius: 16px; background: #111e2a; color: #e7edf4; box-shadow: 0 24px 80px #0008; }
-.prima-release-dialog::backdrop { background: #040b14b3; }
-.prima-release-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 24px; border-bottom: 1px solid #304455; }
-.prima-release-dialog header p { color: #63e5d3; margin: 0 0 5px; font-size: 12px; }
-.prima-release-dialog h2 { font-size: 20px; margin: 0; color: #fff; }
-.prima-release-dialog h3 { font-size: 18px; color: #63e5d3; }
-.prima-release-dialog h4 { font-size: 14px; margin-top: 20px; color: #fff; }
-.prima-release-body { padding: 24px; font-size: 14px; line-height: 1.6; }
-.prima-release-body li { margin-bottom: 6px; }
-.prima-release-body details { border-top: 1px solid #304455; padding-top: 18px; margin-top: 24px; }
-.prima-release-body summary { cursor: pointer; margin-bottom: 16px; }
+.prima-release-dialog { width: min(680px, calc(100% - 32px)); max-height: min(820px, calc(100dvh - 48px)); padding: 0; margin: auto; overflow: hidden; border: 1px solid var(--ui-border, #2a3a49); border-radius: 18px; background: var(--ui-surface, #121c26); color: var(--ui-text, #e7edf4); font-family: var(--bs-body-font-family, "Segoe UI", sans-serif); box-shadow: 0 24px 80px #0008; }
+.prima-release-dialog[open] { display: flex; flex-direction: column; animation: prima-release-enter .2s ease-out both; }
+.prima-release-dialog::backdrop { background: #040b14b3; backdrop-filter: blur(4px); animation: prima-release-backdrop-in .2s ease-out both; }
+.prima-release-dialog.is-closing { animation: prima-release-exit .16s ease-in both; }
+.prima-release-dialog.is-closing::backdrop { animation: prima-release-backdrop-out .16s ease-in both; }
+.prima-release-header { position: relative; flex: 0 0 auto; padding: 28px 76px 24px 28px; border-bottom: 1px solid var(--ui-border, #2a3a49); background: var(--ui-surface-raised, #192633); }
+.prima-release-heading { min-width: 0; }
+.prima-release-dialog .prima-release-eyebrow { color: #63e5d3; margin: 0 0 8px; font-size: 11px; font-weight: 650; letter-spacing: .1em; text-transform: uppercase; }
+.prima-release-dialog h2 { font-size: clamp(19px, 3vw, 24px); line-height: 1.3; font-weight: 650; letter-spacing: -.025em; margin: 0; color: #fff; }
+.prima-release-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 14px; color: var(--ui-muted, #9baebf); font-size: 12px; }
+.prima-release-badge { padding: 3px 10px; border: 1px solid #2d625f; border-radius: 6px; background: #113a39; color: #70e5d4; font-weight: 600; }
+.prima-release-dialog button.prima-release-close { position: absolute; top: 20px; right: 20px; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: 10px; color: #b4c5d4; font-size: 26px; line-height: 1; }
+.prima-release-dialog button:hover { background: #233746; color: #fff; }
+.prima-release-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 24px 28px 28px; font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; scrollbar-width: thin; scrollbar-color: #3a5062 transparent; }
+.prima-release-section { padding: 18px 20px; border: 1px solid var(--ui-border, #2a3a49); border-radius: 12px; background: #15212c; }
+.prima-release-section + .prima-release-section { margin-top: 14px; }
+.prima-release-dialog .prima-release-section :is(h3, h4) { margin: 0 0 10px; font-size: 14px; font-weight: 650; color: #f3f7fc; letter-spacing: 0; }
+.prima-release-section ul { margin: 0; padding-left: 20px; color: #bdcbd8; }
+.prima-release-section li + li { margin-top: 8px; }
+.prima-release-section li::marker { color: #63e5d3; }
+.prima-release-section p { margin: 0; color: var(--ui-muted, #9baebf); }
+.prima-release-entry > h3 { margin: 22px 0 4px; font-size: 16px; color: #63e5d3; }
+.prima-release-date { margin: 0 0 16px; color: var(--ui-muted, #9baebf); font-size: 12px; }
+.prima-release-body details { border-top: 1px solid var(--ui-border, #2a3a49); padding-top: 20px; margin-top: 24px; }
+.prima-release-body summary { cursor: pointer; color: #bdcbd8; font-size: 13px; font-weight: 600; }
+@keyframes prima-release-enter { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes prima-release-exit { to { opacity: 0; transform: translateY(8px) scale(.99); } }
+@keyframes prima-release-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes prima-release-backdrop-out { to { opacity: 0; } }
+@media (max-width: 540px) {
+  .prima-release-dialog { width: calc(100% - 24px); max-height: calc(100dvh - 24px); border-radius: 14px; }
+  .prima-release-header { padding: 22px 64px 20px 20px; }
+  .prima-release-dialog button.prima-release-close { top: 14px; right: 14px; }
+  .prima-release-body { padding: 18px; font-size: 13px; }
+  .prima-release-section { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prima-release-dialog[open], .prima-release-dialog::backdrop, .prima-release-dialog.is-closing, .prima-release-dialog.is-closing::backdrop { animation: none; }
+}
 .prima-release-dialog button, .prima-release-notice button { background: transparent; color: #63e5d3; border: 1px solid #304455; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
 .prima-release-dialog button:focus-visible, .prima-release-notice button:focus-visible { outline: 2px solid #63e5d3; outline-offset: 3px; }
 .prima-release-notice { position: fixed; right: 20px; bottom: 20px; z-index: 1030; width: min(340px, calc(100% - 40px)); background: #142633; border: 1px solid #385361; border-radius: 12px; padding: 16px; color: #fff; box-shadow: 0 8px 24px #0004; font-size: 14px; }

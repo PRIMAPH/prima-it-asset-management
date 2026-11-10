@@ -20,10 +20,21 @@
     const dialog = document.createElement('dialog');
     dialog.className = 'prima-release-dialog';
     dialog.setAttribute('aria-labelledby', 'primaReleaseTitle');
-    dialog.innerHTML = '<header><div><p>What’s New</p><h2 id="primaReleaseTitle">Asset Inventory System</h2></div><button type="button" aria-label="Close release notes">×</button></header><div class="prima-release-body"></div>';
+    dialog.innerHTML = '<header class="prima-release-header"><div class="prima-release-heading"><p class="prima-release-eyebrow">PRIMA ? What?s New</p><h2 id="primaReleaseTitle">Asset Inventory System</h2><div class="prima-release-meta"></div></div><button type="button" class="prima-release-close" aria-label="Close release notes"><span aria-hidden="true">?</span></button></header><div class="prima-release-body" tabindex="0" aria-label="Release details"></div>';
     document.body.appendChild(dialog);
-    dialog.querySelector('button').onclick = () => dialog.close();
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let closeTimer;
+    function closeNotes() {
+        if (!dialog.open || dialog.classList.contains('is-closing')) return;
+        if (reducedMotion.matches) { dialog.close(); return; }
+        dialog.classList.add('is-closing');
+        closeTimer = window.setTimeout(() => dialog.close(), 160);
+    }
+    dialog.querySelector('button').onclick = closeNotes;
+    dialog.addEventListener('cancel', event => { event.preventDefault(); closeNotes(); });
     dialog.addEventListener('close', () => {
+        window.clearTimeout(closeTimer);
+        dialog.classList.remove('is-closing');
         const target = returnFocus && !returnFocus.closest('[inert], [hidden]')
             ? returnFocus
             : trigger.closest('[inert]') ? document.getElementById('primaNavToggle') : trigger;
@@ -56,15 +67,21 @@
         parent.appendChild(element);
         return element;
     }
-    function renderRelease(parent, release) {
-        addText(parent, 'h3', `v${release.version}`);
-        addText(parent, 'p', `Release date: ${release.date}`);
-        for (const [key, title] of [['features', 'Features'], ['improvements', 'Improvements'], ['fixes', 'Bug fixes']]) {
-            addText(parent, 'h4', title);
+    function renderRelease(parent, release, current = false) {
+        const article = parent.appendChild(document.createElement('article'));
+        article.className = 'prima-release-entry';
+        if (!current) {
+            addText(article, 'h3', `v${release.version}`);
+            addText(article, 'p', `Release date: ${release.date}`).className = 'prima-release-date';
+        }
+        for (const [key, title] of [['features', 'Features'], ['improvements', 'Improvements'], ['fixes', 'Bug Fixes']]) {
+            const section = article.appendChild(document.createElement('section'));
+            section.className = 'prima-release-section';
+            addText(section, current ? 'h3' : 'h4', title);
             const items = release[key] || [];
-            if (!items.length) addText(parent, 'p', 'None recorded.');
+            if (!items.length) addText(section, 'p', 'None recorded.');
             else {
-                const list = parent.appendChild(document.createElement('ul'));
+                const list = section.appendChild(document.createElement('ul'));
                 items.forEach(item => addText(list, 'li', item));
             }
         }
@@ -72,6 +89,9 @@
     function renderNotes() {
         const body = dialog.querySelector('.prima-release-body');
         body.replaceChildren();
+        const meta = dialog.querySelector('.prima-release-meta');
+        meta.replaceChildren();
+        if (info) addText(meta, 'span', `v${info.version}`).className = 'prima-release-badge';
         if (!info) {
             addText(body, 'p', 'Version and release information is temporarily unavailable. Check your connection and try again.');
             const retry = addText(body, 'button', 'Retry');
@@ -86,7 +106,11 @@
             return;
         }
         const current = info.releases.find(release => release.version === info.version);
-        if (current) renderRelease(body, current);
+        if (current) {
+            const date = addText(meta, 'time', `Released ${current.date}`);
+            date.dateTime = current.date;
+            renderRelease(body, current, true);
+        }
         else addText(body, 'p', `v${info.version} — Release notes are not available yet.`);
         const previous = info.releases.filter(release => newer(info.version, release.version));
         if (previous.length) {
@@ -100,7 +124,9 @@
         returnFocus = document.activeElement;
         renderNotes();
         if (info) acknowledge();
+        dialog.classList.remove('is-closing');
         dialog.showModal();
+        dialog.querySelector('.prima-release-body').scrollTop = 0;
     }
     trigger.addEventListener('click', openNotes);
     notice.querySelectorAll('button')[0].onclick = openNotes;

@@ -199,7 +199,7 @@
         const trigger = document.getElementById('primaReleaseNotes');
         trigger.disabled = true;
         const releaseScript = document.createElement('script');
-        releaseScript.src = '/js/release-notes.js?v=2';
+        releaseScript.src = '/js/release-notes.js?v=3';
         releaseScript.onerror = () => {
             releaseScript.remove();
             trigger.disabled = false;
