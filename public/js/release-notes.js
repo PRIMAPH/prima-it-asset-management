@@ -20,7 +20,7 @@
     const dialog = document.createElement('dialog');
     dialog.className = 'prima-release-dialog';
     dialog.setAttribute('aria-labelledby', 'primaReleaseTitle');
-    dialog.innerHTML = '<header class="prima-release-header"><div class="prima-release-heading"><p class="prima-release-eyebrow">PRIMA ? What?s New</p><h2 id="primaReleaseTitle">Asset Inventory System</h2><div class="prima-release-meta"></div></div><button type="button" class="prima-release-close" aria-label="Close release notes"><span aria-hidden="true">?</span></button></header><div class="prima-release-body" tabindex="0" aria-label="Release details"></div>';
+    dialog.innerHTML = '<header class="prima-release-header"><div class="prima-release-heading"><p class="prima-release-eyebrow">PRIMA ? What?s New</p><h2 id="primaReleaseTitle">Asset Inventory System</h2><div class="prima-release-meta"></div></div><button type="button" class="prima-release-close" aria-label="Close Release Notes"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header><div class="prima-release-body" tabindex="0" aria-label="Release details"></div>';
     document.body.appendChild(dialog);
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let closeTimer;
